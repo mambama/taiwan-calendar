@@ -78,11 +78,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .day:active:not(.other-month){transform:scale(.93)}
 .day.other-month{opacity:.18;cursor:default}
 .day.holiday:not(.other-month){background:#FFF0F0}
-.day.today{background:#EFF6FF;border-color:#93C5FD}
+.day.today{background:none;border-color:transparent}
 .day.selected{background:#EEEDFE!important;border-color:#534AB7!important}
 .day-num{font-size:14px;font-weight:700;line-height:1;text-align:center;width:100%}
-.day.today .day-num{color:#1D4ED8}
+/* 今天：紫色實心圓點 */
+.day.today .day-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:50%;
+  background:#534AB7;color:#fff!important;
+  font-size:14px;font-weight:800;
+}
 .day.selected .day-num{color:#3C3489!important}
+.day.selected.today .day-num{background:#3C3489;color:#fff!important}
 .day.sat:not(.other-month) .day-num{color:#378ADD}
 .day.sun:not(.other-month) .day-num{color:#E24B4A}
 .day.holiday:not(.other-month) .day-num{color:#A32D2D}
@@ -93,6 +100,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .day.has-evt::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:16px;height:3px;border-radius:3px;background:#1D9E75}
 .day.has-evt.holiday::after{background:#C0392B}
 .day.has-evt.selected::after{background:#534AB7}
+.day.today.has-evt::after{background:#534AB7}
 
 /* ── Tabs ── */
 .tab-bar{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:10px 0;gap:3px}
@@ -477,7 +485,7 @@ function renderEventPanel(){
   else lunarBox.innerHTML='';
   list.innerHTML='';
   const evts=localEvents[dk]||[];
-  if(!evts.length){list.innerHTML='<div class="empty-msg">這天沒有事件<br><span style="font-size:12px">下方輸入框新增</span></div>';return}
+  if(!evts.length){list.innerHTML='<div class="empty-msg">這天沒有事件</div>';return}
   evts.forEach((ev,i)=>{
     const isExp=expandedEvt&&expandedEvt.dk===dk&&expandedEvt.idx===i,mode=isExp?expandedEvt.mode:null;
     const item=document.createElement('div');item.className='event-item';
@@ -511,7 +519,7 @@ function renderEventPanel(){
 // ── 待辦 ──────────────────────────────────────────────
 function renderTodos(){
   const list=document.getElementById('todo-list');list.innerHTML='';
-  if(!todos.length){list.innerHTML='<div class="empty-msg">沒有待辦事項<br><span style="font-size:12px">下方輸入框新增</span></div>';return}
+  if(!todos.length){list.innerHTML='<div class="empty-msg">沒有待辦事項</div>';return}
   todos.forEach(t=>{
     const isExp=expandedTodo&&expandedTodo.id===t.id,mode=isExp?expandedTodo.mode:null;
     const item=document.createElement('div');item.className='todo-item';
