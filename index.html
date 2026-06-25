@@ -11,172 +11,184 @@
 <link rel="manifest" href="manifest.json"/>
 <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 <style>
-:root{--bg:#fff;--bg2:#f3f4f6;--tx:#111827;--tx2:#6b7280;--tx3:#9ca3af;--bd:#e5e7eb;--bd2:#f3f4f6;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:root{--bg:#fff;--bg2:#f0f0f2;--tx:#0d1117;--tx2:#555e6b;--tx3:#9ca3af;--bd:#d1d5db;--bd2:#e9eaec;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100vh}
-.app{max-width:440px;margin:0 auto;padding:8px 10px 30px}
-.top-bar{display:flex;align-items:center;gap:5px;padding:8px 0 10px}
-.nav-btn{background:none;border:0.5px solid var(--bd);border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:15px;flex-shrink:0}
+body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px}
+.app{max-width:460px;margin:0 auto;padding:10px 12px 40px}
+
+/* ── 頂部 ── */
+.top-bar{display:flex;align-items:center;gap:6px;padding:8px 0 12px}
+.nav-btn{background:none;border:1.5px solid var(--bd);border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:18px;font-weight:600;flex-shrink:0}
 .nav-btn:active{background:var(--bg2)}
-.month-title{font-size:15px;font-weight:600;min-width:96px;text-align:center;flex-shrink:0}
+.month-title{font-size:17px;font-weight:700;min-width:100px;text-align:center;flex-shrink:0}
 .spacer{flex:1}
-.top-btn{font-size:11px;padding:4px 10px;border:0.5px solid var(--bd);border-radius:20px;background:none;color:var(--tx2);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.top-btn{font-size:13px;font-weight:600;padding:8px 14px;border:1.5px solid var(--bd);border-radius:22px;background:none;color:var(--tx2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:38px}
 .top-btn:active{background:var(--bg2)}
 .top-btn.active{border-color:#534AB7;color:#534AB7;background:#EEEDFE}
 .top-btn.list-active{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
-/* jump */
-.jump-popup{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
-.jump-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.jump-year-input{width:72px;font-size:13px;padding:5px 7px;border:0.5px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--tx);outline:none;text-align:center}
+
+/* ── 查詢 popup ── */
+.jump-popup{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.jump-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.jump-year-input{width:80px;font-size:14px;font-weight:600;padding:8px 10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--tx);outline:none;text-align:center}
 .jump-year-input:focus{border-color:#534AB7}
-.jump-popup select,.jump-go,.jump-cancel{font-size:12px;padding:5px 8px;border-radius:8px}
-.jump-popup select{border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx);outline:none;cursor:pointer}
-.jump-go{border:none;background:#534AB7;color:#fff;cursor:pointer}
-.jump-cancel{border:0.5px solid var(--bd);background:none;color:var(--tx2);cursor:pointer}
-.jump-shortcuts{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.jump-shortcuts span{font-size:10px;color:var(--tx3);flex-shrink:0}
-.yr-chip{font-size:11px;padding:2px 8px;border:0.5px solid var(--bd);border-radius:20px;cursor:pointer;background:none;color:var(--tx2)}
+.jump-popup select{font-size:14px;padding:8px 10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--tx);outline:none;cursor:pointer}
+.jump-go{font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;cursor:pointer;border:none;background:#534AB7;color:#fff}
+.jump-cancel{font-size:13px;padding:8px 14px;border-radius:10px;cursor:pointer;border:1.5px solid var(--bd);background:none;color:var(--tx2)}
+.jump-shortcuts{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.jump-shortcuts span{font-size:12px;color:var(--tx3);flex-shrink:0;font-weight:500}
+.yr-chip{font-size:12px;font-weight:500;padding:4px 10px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;background:none;color:var(--tx2)}
 .yr-chip:active{background:#EEEDFE;border-color:#534AB7;color:#534AB7}
-/* toolbar */
-.toolbar{display:flex;align-items:center;gap:5px;margin-bottom:8px;flex-wrap:wrap}
-.notif-pill{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;border:0.5px solid var(--bd);font-size:11px;color:var(--tx2);cursor:pointer;background:none}
+
+/* ── 工具列 ── */
+.toolbar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.notif-pill{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:22px;border:1.5px solid var(--bd);font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;background:none;min-height:38px}
 .notif-pill.on{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
 .notif-pill.off{border-color:#E24B4A;color:#A32D2D;background:#FCEBEB}
-.tb-btn{display:flex;align-items:center;gap:3px;padding:3px 9px;border:0.5px solid var(--bd);border-radius:20px;font-size:11px;color:var(--tx2);background:none;cursor:pointer;white-space:nowrap}
-.tb-btn.google{border-color:#378ADD;color:#185FA5;background:#EFF6FF}
+.tb-btn{display:flex;align-items:center;gap:4px;padding:7px 12px;border:1.5px solid var(--bd);border-radius:22px;font-size:13px;font-weight:600;color:var(--tx2);background:none;cursor:pointer;white-space:nowrap;min-height:38px}
+.tb-btn:active{background:var(--bg2)}
 .tb-btn.sync{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
-.save-toast{font-size:11px;color:#1D9E75;opacity:0;transition:opacity .3s;margin-left:auto;flex-shrink:0}
+.save-toast{font-size:12px;font-weight:600;color:#1D9E75;opacity:0;transition:opacity .3s;margin-left:auto;flex-shrink:0}
 .save-toast.show{opacity:1}
-/* info boxes */
-.info-box{border-radius:10px;padding:10px 13px;margin-bottom:9px;font-size:11px;line-height:1.7}
-.info-box.blue{background:#EFF6FF;border:0.5px solid #BFDBFE;color:#1E40AF}
-.info-box.yellow{background:#FFFBEB;border:0.5px solid #FDE68A;color:#78350F}
-.info-box b{font-weight:600}
-.info-box-title{font-size:12px;font-weight:600;margin-bottom:5px}
-.info-box-actions{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-.info-box-actions button{font-size:11px;padding:4px 11px;border-radius:20px;cursor:pointer}
-/* sync buttons */
-.sync-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
-.sync-btn{font-size:12px;padding:8px 10px;border-radius:9px;cursor:pointer;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx);display:flex;align-items:center;justify-content:center;gap:5px}
-.sync-btn:active{background:var(--bd)}
-.sync-btn.primary{background:#534AB7;border-color:#534AB7;color:#fff}
-/* calendar */
-.weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
-.wd{text-align:center;font-size:10px;padding:2px 0;font-weight:500;color:var(--tx3)}
+
+/* ── 節日更新結果 modal ── */
+.hol-result{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.hol-result-title{font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.hol-result-body{font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:10px}
+.hol-result-body b{color:var(--tx);font-weight:700}
+.hol-result-close{font-size:13px;font-weight:600;padding:7px 18px;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer}
+
+/* ── 同步 box ── */
+.sync-box{background:var(--bg);border:1px solid #FDE68A;border-radius:14px;padding:14px 16px;margin-bottom:10px;background:#FFFBEB}
+.sync-box-title{font-size:14px;font-weight:700;color:#78350F;margin-bottom:6px}
+.sync-box-body{font-size:13px;color:#92400E;line-height:1.7;margin-bottom:10px}
+.sync-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sync-actions button{font-size:13px;font-weight:600;padding:7px 16px;border-radius:10px;cursor:pointer}
+
+/* ── PWA 安裝提示 ── */
+#install-banner{display:none;background:#534AB7;color:#fff;padding:12px 14px;border-radius:12px;margin-bottom:10px;font-size:14px;font-weight:600;align-items:center;gap:8px}
+#install-banner button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:20px;color:#fff;font-size:13px;font-weight:600;padding:6px 14px;cursor:pointer}
+
+/* ── 行事曆 ── */
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
+.wd{text-align:center;font-size:12px;font-weight:700;padding:3px 0;color:var(--tx3)}
 .wd.sat{color:#378ADD}.wd.sun{color:#E24B4A}
-.days{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
-.day{min-height:44px;border-radius:8px;padding:3px 2px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;border:0.5px solid transparent;position:relative}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.day{min-height:50px;border-radius:9px;padding:4px 2px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;border:1px solid transparent;position:relative}
 .day:active:not(.other-month){transform:scale(.93)}
-.day.other-month{opacity:.2;cursor:default}
+.day.other-month{opacity:.18;cursor:default}
 .day.holiday:not(.other-month){background:#FFF0F0}
 .day.today{background:#EFF6FF;border-color:#93C5FD}
 .day.selected{background:#EEEDFE!important;border-color:#534AB7!important}
-.day-num{font-size:12px;font-weight:500;line-height:1;text-align:center;width:100%}
+.day-num{font-size:14px;font-weight:700;line-height:1;text-align:center;width:100%}
 .day.today .day-num{color:#1D4ED8}
 .day.selected .day-num{color:#3C3489!important}
 .day.sat:not(.other-month) .day-num{color:#378ADD}
 .day.sun:not(.other-month) .day-num{color:#E24B4A}
 .day.holiday:not(.other-month) .day-num{color:#A32D2D}
-.lunar-txt{font-size:7.5px;color:var(--tx3);margin-top:1px;text-align:center;line-height:1.1;width:100%}
+.lunar-txt{font-size:9px;font-weight:500;color:var(--tx3);margin-top:1px;text-align:center;line-height:1.2;width:100%}
 .day.holiday:not(.other-month) .lunar-txt{color:#B05050}
-.solar-term{font-size:7px;color:#1D9E75;font-weight:500;line-height:1;text-align:center;width:100%}
-.hol-name{font-size:6.5px;color:#A32D2D;line-height:1;margin-top:1px;text-align:center;max-width:100%;overflow:hidden}
-.day.has-evt::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:14px;height:2.5px;border-radius:2px;background:#1D9E75}
+.solar-term{font-size:8px;font-weight:700;color:#1D9E75;line-height:1;text-align:center;width:100%}
+.hol-name{font-size:7.5px;font-weight:600;color:#A32D2D;line-height:1;margin-top:1px;text-align:center;max-width:100%;overflow:hidden}
+.day.has-evt::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:16px;height:3px;border-radius:3px;background:#1D9E75}
 .day.has-evt.holiday::after{background:#C0392B}
 .day.has-evt.selected::after{background:#534AB7}
-/* tabs */
-.tab-bar{display:flex;background:var(--bg2);border-radius:10px;padding:2px;margin:8px 0;gap:2px}
-.tab{flex:1;text-align:center;padding:6px;border-radius:8px;font-size:12px;font-weight:500;color:var(--tx2);cursor:pointer}
-.tab.active{background:var(--bg);color:var(--tx);border:0.5px solid var(--bd2)}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:10px 0;gap:3px}
+.tab{flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:700;color:var(--tx2);cursor:pointer}
+.tab.active{background:var(--bg);color:var(--tx);border:1px solid var(--bd2)}
 .panel{display:none}.panel.active{display:block}
-.sel-label{font-size:13px;font-weight:500;margin-bottom:6px}
-/* lunar detail */
-.lunar-detail{padding:8px 12px;border-radius:10px;background:#FFFBF0;border:0.5px solid #F0D080;margin-bottom:8px}
-.lunar-main{font-size:12px;font-weight:500;color:#7A4F00;margin-bottom:3px}
-.lunar-sub{font-size:10px;color:#9A6B20;margin-bottom:4px}
-.yi-ji{display:flex;gap:3px;flex-wrap:wrap}
-.yi-tag,.ji-tag{font-size:10px;padding:1px 6px;border-radius:20px}
-.yi-tag{background:#E8F8F0;color:#0A6940;border:0.5px solid #9ED8BB}
-.ji-tag{background:#FFF0F0;color:#A32D2D;border:0.5px solid #F0BBBB}
-.hol-info{padding:6px 11px;background:#FCEBEB;border-radius:8px;margin-bottom:6px;font-size:12px;color:#A32D2D}
-/* event items */
-.event-list{display:flex;flex-direction:column;gap:5px}
-.event-item,.todo-item{border-radius:9px;background:var(--bg2);overflow:hidden}
-.event-main,.todo-main{display:flex;align-items:center;gap:7px;padding:8px 10px}
-.ev-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.ev-title{font-size:12px}
-.remind-badge{display:inline-flex;align-items:center;gap:2px;font-size:10px;color:#534AB7;background:#EEEDFE;border-radius:10px;padding:1px 5px;white-space:nowrap}
-.remind-badge.now{color:#7C4A00;background:#FEF3C7;border:0.5px solid #FDE68A}
-.ev-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.ic-btn{background:none;border:0.5px solid var(--bd);border-radius:6px;width:27px;height:27px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:13px;flex-shrink:0}
+.sel-label{font-size:15px;font-weight:700;margin-bottom:8px}
+
+/* ── 農民曆 ── */
+.lunar-detail{padding:10px 14px;border-radius:12px;background:#FFFBF0;border:1px solid #F0D080;margin-bottom:10px}
+.lunar-main{font-size:14px;font-weight:700;color:#7A4F00;margin-bottom:4px}
+.lunar-sub{font-size:12px;font-weight:500;color:#9A6B20;margin-bottom:5px}
+.yi-ji{display:flex;gap:4px;flex-wrap:wrap}
+.yi-tag,.ji-tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.yi-tag{background:#E8F8F0;color:#0A6940;border:1px solid #9ED8BB}
+.ji-tag{background:#FFF0F0;color:#A32D2D;border:1px solid #F0BBBB}
+.hol-info{padding:8px 12px;background:#FCEBEB;border-radius:10px;margin-bottom:8px;font-size:13px;font-weight:600;color:#A32D2D}
+
+/* ── 事件列表 ── */
+.event-list{display:flex;flex-direction:column;gap:6px}
+.event-item,.todo-item{border-radius:11px;background:var(--bg2);overflow:hidden}
+.event-main,.todo-main{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.ev-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ev-title{font-size:14px;font-weight:600}
+.remind-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;border-radius:10px;padding:2px 7px;white-space:nowrap}
+.remind-badge.now{color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A}
+.ev-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.ic-btn{background:none;border:1.5px solid var(--bd);border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:15px;flex-shrink:0}
 .ic-btn.active-mode{background:#EEEDFE;border-color:#534AB7;color:#534AB7}
 .ic-btn.bell.active-mode{background:#E1F5EE;border-color:#1D9E75;color:#1D9E75}
 .ic-btn.del:active{background:#FCEBEB;color:#A32D2D}
-/* sub bars */
-.sub-bar{padding:0 10px 8px;display:flex;gap:4px;align-items:center}
-.sub-bar input{flex:1;font-size:12px;padding:5px 8px;border:0.5px solid #534AB7;border-radius:8px;background:var(--bg);color:var(--tx);outline:none}
-.save-btn2{font-size:11px;padding:5px 10px;border:none;border-radius:8px;background:#534AB7;color:#fff;cursor:pointer}
-.cancel-btn2{font-size:11px;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:none;color:var(--tx2);cursor:pointer}
-/* remind popup */
-.reminder-popup{padding:0 10px 8px}
-.reminder-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:5px}
-.rem-opt{font-size:11px;padding:5px 2px;border:0.5px solid var(--bd);border-radius:8px;background:none;color:var(--tx2);cursor:pointer;text-align:center;line-height:1.3}
-.rem-opt:active,.rem-opt.active{background:#E1F5EE;border-color:#1D9E75;color:#0F6E56;font-weight:500}
-.rem-opt.now-style:active,.rem-opt.now-style.active{background:#FEF3C7;border-color:#F59E0B;color:#7C4A00;font-weight:500}
-.custom-remind-row{display:flex;gap:4px;align-items:center;margin-top:2px}
-.custom-remind-row input{width:52px;font-size:12px;padding:4px 6px;border:0.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);outline:none}
+
+/* ── sub bars ── */
+.sub-bar{padding:0 12px 10px;display:flex;gap:6px;align-items:center}
+.sub-bar input{flex:1;font-size:14px;font-weight:500;padding:8px 10px;border:1.5px solid #534AB7;border-radius:10px;background:var(--bg);color:var(--tx);outline:none}
+.save-btn2{font-size:13px;font-weight:700;padding:8px 14px;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer}
+.cancel-btn2{font-size:13px;font-weight:600;padding:8px 12px;border:1.5px solid var(--bd);border-radius:10px;background:none;color:var(--tx2);cursor:pointer}
+
+/* ── 提醒 popup ── */
+.reminder-popup{padding:0 12px 10px}
+.reminder-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px}
+.rem-opt{font-size:12px;font-weight:600;padding:8px 2px;border:1.5px solid var(--bd);border-radius:10px;background:none;color:var(--tx2);cursor:pointer;text-align:center;line-height:1.3}
+.rem-opt:active,.rem-opt.active{background:#E1F5EE;border-color:#1D9E75;color:#0F6E56}
+.rem-opt.now-style:active,.rem-opt.now-style.active{background:#FEF3C7;border-color:#F59E0B;color:#7C4A00}
+.custom-remind-row{display:flex;gap:5px;align-items:center;margin-top:4px}
+.custom-remind-row input{width:58px;font-size:13px;font-weight:600;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none}
 .custom-remind-row input:focus{border-color:#1D9E75}
-.custom-remind-row select{flex:1;font-size:12px;padding:4px 4px;border:0.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer}
-.set-rem-btn{font-size:11px;padding:4px 11px;border:none;border-radius:8px;background:#1D9E75;color:#fff;cursor:pointer;white-space:nowrap}
+.custom-remind-row select{flex:1;font-size:13px;font-weight:500;padding:7px 6px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer}
+.set-rem-btn{font-size:13px;font-weight:700;padding:7px 14px;border:none;border-radius:10px;background:#1D9E75;color:#fff;cursor:pointer;white-space:nowrap}
 .set-rem-btn.orange{background:#F59E0B}
-/* todo */
-.todo-cb{width:20px;height:20px;border:1.5px solid var(--bd);border-radius:5px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:11px}
+
+/* ── 待辦 ── */
+.todo-cb{width:22px;height:22px;border:2px solid var(--bd);border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:13px}
 .todo-cb.done{background:#1D9E75;border-color:#1D9E75;color:#fff}
-.todo-text{flex:1;font-size:12px;min-width:0}
+.todo-text{flex:1;font-size:14px;font-weight:600;min-width:0}
 .todo-text.done{text-decoration:line-through;color:var(--tx3)}
-.empty-msg{font-size:12px;color:var(--tx3);padding:14px 0;text-align:center}
-.add-bar{display:flex;gap:5px;margin-top:8px}
-.add-bar input{flex:1;font-size:13px;padding:8px 10px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none}
+.empty-msg{font-size:13px;font-weight:500;color:var(--tx3);padding:16px 0;text-align:center}
+.add-bar{display:flex;gap:6px;margin-top:10px}
+.add-bar input{flex:1;font-size:14px;font-weight:500;padding:10px 12px;border:1.5px solid var(--bd);border-radius:12px;background:var(--bg);color:var(--tx);outline:none}
 .add-bar input:focus{border-color:#534AB7}
-.add-bar .abtn{width:36px;height:36px;border-radius:10px;border:none;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#534AB7}
+.add-bar .abtn{width:40px;height:40px;border-radius:12px;border:none;color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#534AB7}
 .add-bar .abtn.green{background:#1D9E75}
 .add-bar .abtn:active{filter:brightness(.9);transform:scale(.95)}
-/* list */
-.list-toggle{display:flex;background:var(--bg2);border-radius:10px;padding:2px;margin-bottom:9px;gap:2px}
-.lt-btn{flex:1;text-align:center;padding:6px;border-radius:8px;font-size:12px;font-weight:500;color:var(--tx2);cursor:pointer;border:none;background:none}
-.lt-btn.active{background:var(--bg);color:var(--tx);border:0.5px solid var(--bd2)}
-.list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.list-title{font-size:13px;font-weight:500}
-.list-count{font-size:11px;color:var(--tx3);background:var(--bg2);padding:2px 8px;border-radius:20px}
-.list-group{margin-bottom:10px}
-.list-date-label{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.list-date-text{font-size:11px;font-weight:500;color:var(--tx2)}
-.list-badge{font-size:10px;padding:1px 6px;border-radius:10px}
+
+/* ── 清單 ── */
+.list-toggle{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin-bottom:12px;gap:3px}
+.lt-btn{flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:700;color:var(--tx2);cursor:pointer;border:none;background:none}
+.lt-btn.active{background:var(--bg);color:var(--tx);border:1px solid var(--bd2)}
+.list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.list-title{font-size:15px;font-weight:700}
+.list-count{font-size:12px;font-weight:600;color:var(--tx3);background:var(--bg2);padding:3px 10px;border-radius:20px}
+.list-group{margin-bottom:12px}
+.list-date-label{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.list-date-text{font-size:13px;font-weight:700;color:var(--tx2)}
+.list-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px}
 .list-badge.hol{color:#A32D2D;background:#FFF0F0}
 .list-badge.tod{color:#1D4ED8;background:#EFF6FF}
-.list-evt{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:9px;background:var(--bg2);margin-bottom:3px;cursor:pointer}
+.list-evt{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px;cursor:pointer}
 .list-evt:active{background:var(--bd)}
-.list-evt-dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.list-evt-text{font-size:12px;flex:1}
-.list-evt-remind{font-size:10px;color:#534AB7;background:#EEEDFE;padding:1px 5px;border-radius:10px;white-space:nowrap}
-.list-evt-arrow{font-size:13px;color:var(--tx3);flex-shrink:0}
-.list-todo{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:var(--bg2);margin-bottom:3px}
-.list-todo-cb{width:18px;height:18px;border:1.5px solid var(--bd);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;background:var(--bg)}
+.list-evt-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.list-evt-text{font-size:13px;font-weight:600;flex:1}
+.list-evt-remind{font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.list-evt-arrow{font-size:14px;color:var(--tx3);flex-shrink:0}
+.list-todo{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px}
+.list-todo-cb{width:20px;height:20px;border:2px solid var(--bd);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:var(--bg)}
 .list-todo-cb.done{background:#1D9E75;border-color:#1D9E75;color:#fff}
-.list-todo-text{font-size:12px;flex:1}
+.list-todo-text{font-size:13px;font-weight:600;flex:1}
 .list-todo-text.done{text-decoration:line-through;color:var(--tx3)}
-.list-todo-remind{font-size:10px;color:#7C4A00;background:#FEF3C7;border:0.5px solid #FDE68A;padding:1px 5px;border-radius:10px;white-space:nowrap}
-.list-empty{text-align:center;padding:20px 0;font-size:12px;color:var(--tx3)}
+.list-todo-remind{font-size:11px;font-weight:600;color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.list-empty{text-align:center;padding:24px 0;font-size:13px;font-weight:500;color:var(--tx3)}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* PWA install banner */
-#install-banner{display:none;background:#534AB7;color:#fff;padding:10px 14px;border-radius:10px;margin-bottom:10px;font-size:12px;align-items:center;gap:8px}
-#install-banner button{background:rgba(255,255,255,.2);border:0.5px solid rgba(255,255,255,.4);border-radius:20px;color:#fff;font-size:11px;padding:3px 10px;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- PWA 安裝提示 -->
   <div id="install-banner">
     <span style="flex:1">📱 加到主畫面，享受 App 體驗！</span>
     <button id="install-btn">安裝</button>
@@ -226,15 +238,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100
     <span class="save-toast" id="save-toast">✓ 已儲存</span>
   </div>
 
+  <!-- 節日更新結果 -->
+  <div id="hol-result-box" style="display:none">
+    <div class="hol-result">
+      <div class="hol-result-title" id="hol-result-title"></div>
+      <div class="hol-result-body" id="hol-result-body"></div>
+      <button class="hol-result-close" id="hol-result-close">確認</button>
+    </div>
+  </div>
+
+  <!-- 備份/還原 -->
   <div id="sync-box" style="display:none">
-    <div class="info-box yellow">
-      <div class="info-box-title">⇅ 資料備份 / 跨裝置同步</div>
-      匯出 JSON 檔後，在另一台裝置匯入，即可手動同步資料。<br>
-      若要自動同步，需要部署到網路並串接 Firebase 等雲端資料庫。
-      <div class="info-box-actions">
-        <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff;border-radius:20px">📤 匯出資料</button>
-        <button onclick="document.getElementById('import-input').click()" style="background:none;border:0.5px solid #D97706;color:#92400E;border-radius:20px">📥 匯入資料</button>
-        <button onclick="document.getElementById('sync-box').style.display='none'" style="background:none;border:0.5px solid var(--bd);color:var(--tx2);border-radius:20px">關閉</button>
+    <div class="sync-box">
+      <div class="sync-box-title">⇅ 資料備份 / 跨裝置同步</div>
+      <div class="sync-box-body">匯出 JSON 後，在另一台裝置匯入即可手動同步。<br>自動同步需部署到網路並串接 Firebase 等雲端資料庫。</div>
+      <div class="sync-actions">
+        <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff">📤 匯出資料</button>
+        <button onclick="document.getElementById('import-input').click()" style="background:none;border:1.5px solid #D97706;color:#92400E">📥 匯入資料</button>
+        <button onclick="document.getElementById('sync-box').style.display='none'" style="background:none;border:1.5px solid var(--bd);color:var(--tx2)">關閉</button>
       </div>
       <input type="file" id="import-input" accept=".json" style="display:none"/>
     </div>
@@ -261,7 +282,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100
     </div>
     <div class="panel" id="panel-todos">
       <div class="event-list" id="todo-list"></div>
-      <div class="add-bar" style="margin-top:8px">
+      <div class="add-bar" style="margin-top:10px">
         <input type="text" id="todo-input" placeholder="新增待辦事項…"/>
         <button class="abtn green" id="add-todo-btn">+</button>
       </div>
@@ -282,7 +303,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100
 </div>
 
 <script>
-// ── 資料 ──────────────────────────────────────────────
 const today=new Date();
 let curYear=today.getFullYear(),curMonth=today.getMonth();
 let selectedDate=null,holidayData={},localEvents={},todos=[],nextId=1;
@@ -293,25 +313,21 @@ const dKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${St
 const yyyymmdd=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
 function showToast(){const t=document.getElementById('save-toast');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1500)}
-
-// localStorage（單機版）
 function saveEvents(){try{localStorage.setItem('cal_events',JSON.stringify(localEvents));showToast()}catch(e){}}
 function saveTodos(){try{localStorage.setItem('cal_todos',JSON.stringify(todos));showToast()}catch(e){}}
 function loadStorage(){
   try{const r=localStorage.getItem('cal_events');if(r)localEvents=JSON.parse(r)}catch(e){}
   try{const r=localStorage.getItem('cal_todos');if(r){todos=JSON.parse(r);nextId=todos.reduce((m,t)=>Math.max(m,t.id),0)+1}}catch(e){}
-  if(!todos.length){todos=[{id:1,text:'回覆客戶信件',done:false},{id:2,text:'確認下週行程',done:false}];nextId=3}
+  // 無預設待辦，從空白開始
 }
 
-// 匯出
 function exportData(){
   const data={events:localEvents,todos,exportedAt:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`行事曆備份_${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}.json`;
+  a.download=`行事曆備份_${yyyymmdd(today)}.json`;
   a.click();URL.revokeObjectURL(a.href);
 }
-// 匯入
 document.getElementById('import-input').addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -326,18 +342,37 @@ document.getElementById('import-input').addEventListener('change',e=>{
   };reader.readAsText(file);e.target.value='';
 });
 
-// ── 節日 ──────────────────────────────────────────────
+// ── 節日（含結果視窗）────────────────────────────────
 async function loadHolidays(year,silent=false){
   const btn=document.getElementById('update-hol-btn');
-  if(!silent){btn.textContent='↻ 更新中…';btn.disabled=true}
+  btn.textContent='↻ 載入中…';btn.disabled=true;
+  const beforeCount=Object.keys(holidayData).length;
+  let success=false,newCount=0;
   try{
     const r=await fetch(`https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`);
-    if(!r.ok)throw 0;
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
     const data=await r.json();
     data.forEach(item=>{if(item.isHoliday&&item.description)holidayData[item.date]=item.description});
-  }catch(e){}
-  btn.textContent='↻ 更新節日';btn.disabled=false;renderCalendar();
+    newCount=Object.keys(holidayData).length;
+    success=true;
+  }catch(e){success=false}
+  btn.textContent='↻ 更新節日';btn.disabled=false;
+  renderCalendar();
+  if(!silent){
+    const box=document.getElementById('hol-result-box');
+    const title=document.getElementById('hol-result-title');
+    const body=document.getElementById('hol-result-body');
+    if(success){
+      title.innerHTML='✅ 節日資料更新成功';
+      body.innerHTML=`已載入 <b>${year} 年</b> 台灣國定假日與節日資料。<br>共收錄 <b>${newCount} 個</b>假日與補班補假日期，<br>包含農曆節日（春節、端午、中秋等）及國定假日調整。`;
+    }else{
+      title.innerHTML='⚠️ 更新失敗';
+      body.innerHTML=`無法從網路取得 ${year} 年節日資料。<br>請確認網路連線後再試一次。<br>行事曆仍可正常使用，僅節日標示可能不完整。`;
+    }
+    box.style.display='block';
+  }
 }
+document.getElementById('hol-result-close').addEventListener('click',()=>{document.getElementById('hol-result-box').style.display='none'});
 
 // ── 農民曆 ─────────────────────────────────────────────
 function getLunar(date){
@@ -381,7 +416,7 @@ function addDay(grid,date,other){
   grid.appendChild(div);
 }
 
-// ── 提醒 popup 建立（通用）────────────────────────────
+// ── 提醒 popup ─────────────────────────────────────────
 function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
   const pop=document.createElement('div');pop.className='reminder-popup';
   const grid=document.createElement('div');grid.className='reminder-grid';
@@ -442,7 +477,7 @@ function renderEventPanel(){
   else lunarBox.innerHTML='';
   list.innerHTML='';
   const evts=localEvents[dk]||[];
-  if(!evts.length){list.innerHTML='<div class="empty-msg">這天沒有事件<br><span style="font-size:11px">下方新增</span></div>';return}
+  if(!evts.length){list.innerHTML='<div class="empty-msg">這天沒有事件<br><span style="font-size:12px">下方輸入框新增</span></div>';return}
   evts.forEach((ev,i)=>{
     const isExp=expandedEvt&&expandedEvt.dk===dk&&expandedEvt.idx===i,mode=isExp?expandedEvt.mode:null;
     const item=document.createElement('div');item.className='event-item';
@@ -476,7 +511,7 @@ function renderEventPanel(){
 // ── 待辦 ──────────────────────────────────────────────
 function renderTodos(){
   const list=document.getElementById('todo-list');list.innerHTML='';
-  if(!todos.length){list.innerHTML='<div class="empty-msg">沒有待辦事項</div>';return}
+  if(!todos.length){list.innerHTML='<div class="empty-msg">沒有待辦事項<br><span style="font-size:12px">下方輸入框新增</span></div>';return}
   todos.forEach(t=>{
     const isExp=expandedTodo&&expandedTodo.id===t.id,mode=isExp?expandedTodo.mode:null;
     const item=document.createElement('div');item.className='todo-item';
@@ -552,11 +587,10 @@ function renderMonthList(){
       container.appendChild(row);
     };
     if(pending.length){const hd=document.createElement('div');hd.className='list-date-label';hd.innerHTML='<span class="list-date-text">未完成</span>';container.appendChild(hd);pending.forEach(renderRow)}
-    if(done.length){const hd=document.createElement('div');hd.className='list-date-label';hd.style.marginTop='8px';hd.innerHTML='<span class="list-date-text" style="color:var(--tx3)">已完成</span>';container.appendChild(hd);done.forEach(renderRow)}
+    if(done.length){const hd=document.createElement('div');hd.className='list-date-label';hd.style.marginTop='10px';hd.innerHTML='<span class="list-date-text" style="color:var(--tx3)">已完成</span>';container.appendChild(hd);done.forEach(renderRow)}
   }
 }
-
-function setListMode(mode){listMode=mode;document.getElementById('lt-evt').classList.toggle('active',mode==='events');document.getElementById('lt-todo').classList.toggle('active',mode==='todos');renderMonthList()}
+function setListMode(m){listMode=m;document.getElementById('lt-evt').classList.toggle('active',m==='events');document.getElementById('lt-todo').classList.toggle('active',m==='todos');renderMonthList()}
 document.getElementById('lt-evt').addEventListener('click',()=>setListMode('events'));
 document.getElementById('lt-todo').addEventListener('click',()=>setListMode('todos'));
 function toggleList(force){showingList=force!==undefined?force:!showingList;document.getElementById('cal-section').style.display=showingList?'none':'block';document.getElementById('list-section').style.display=showingList?'block':'none';document.getElementById('list-btn').classList.toggle('list-active',showingList);if(showingList)renderMonthList()}
@@ -571,7 +605,7 @@ document.querySelectorAll('.yr-chip').forEach(chip=>{chip.addEventListener('clic
 
 // 通知
 function updateNotifUI(){const btn=document.getElementById('notif-btn'),lbl=document.getElementById('notif-label');if(notifPermission==='granted'){btn.className='notif-pill on';lbl.textContent='通知已開啟'}else if(notifPermission==='denied'){btn.className='notif-pill off';lbl.textContent='通知被封鎖'}else{btn.className='notif-pill';lbl.textContent='開啟通知'}}
-document.getElementById('notif-btn').addEventListener('click',async()=>{if(notifPermission==='denied'){alert('通知已被封鎖，請至瀏覽器設定手動允許。');return}if(!('Notification' in window)){alert('此環境不支援通知功能。');return}const p=await Notification.requestPermission();notifPermission=p;updateNotifUI();if(p==='granted')new Notification('✅ 通知已開啟',{body:'事件與待辦提醒將準時提醒您'})});
+document.getElementById('notif-btn').addEventListener('click',async()=>{if(notifPermission==='denied'){alert('通知已被封鎖，請至瀏覽器設定手動允許。');return}if(!('Notification' in window)){alert('此環境不支援通知功能。');return}const p=await Notification.requestPermission();notifPermission=p;updateNotifUI();if(p==='granted')new Notification('✅ 通知已開啟',{body:'事件與待辦提醒將準時通知您'})});
 document.getElementById('update-hol-btn').addEventListener('click',()=>{holidayData={};loadHolidays(curYear)});
 document.getElementById('sync-btn').addEventListener('click',()=>{const b=document.getElementById('sync-box');b.style.display=b.style.display==='none'?'block':'none'});
 document.getElementById('list-btn').addEventListener('click',()=>toggleList());
@@ -584,19 +618,17 @@ document.getElementById('add-todo-btn').addEventListener('click',()=>{const inp=
 document.getElementById('todo-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-todo-btn').click()});
 document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>switchTab(tab.dataset.tab))});
 
-// PWA 安裝提示
+// PWA
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-banner').style.display='flex'});
 document.getElementById('install-btn').addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install-banner').style.display='none'});
 document.getElementById('install-dismiss').addEventListener('click',()=>{document.getElementById('install-banner').style.display='none'});
-
-// Service Worker 註冊
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 
 if('Notification' in window)notifPermission=Notification.permission;
 updateNotifUI();
 loadStorage();renderTodos();renderEventPanel();
-loadHolidays(curYear);
+loadHolidays(curYear,true);  // 首次載入靜默更新，不跳視窗
 </script>
 </body>
 </html>
