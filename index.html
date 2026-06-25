@@ -74,19 +74,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .wd{text-align:center;font-size:12px;font-weight:700;padding:3px 0;color:var(--tx3)}
 .wd.sat{color:#378ADD}.wd.sun{color:#E24B4A}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.day{min-height:50px;border-radius:9px;padding:4px 2px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;border:1px solid transparent;position:relative}
+.day{min-height:54px;border-radius:9px;padding:4px 2px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;border:1px solid transparent;position:relative}
 .day:active:not(.other-month){transform:scale(.93)}
 .day.other-month{opacity:.18;cursor:default}
 .day.holiday:not(.other-month){background:#FFF0F0}
 .day.today{background:none;border-color:transparent}
 .day.selected{background:#EEEDFE!important;border-color:#534AB7!important}
-.day-num{font-size:14px;font-weight:700;line-height:1;text-align:center;width:100%}
+.day-num{font-size:17px;font-weight:800;line-height:1;text-align:center;width:100%}
 /* 今天：紫色實心圓點 */
 .day.today .day-num{
   display:inline-flex;align-items:center;justify-content:center;
-  width:30px;height:30px;border-radius:50%;
+  width:32px;height:32px;border-radius:50%;
   background:#534AB7;color:#fff!important;
-  font-size:14px;font-weight:800;
+  font-size:16px;font-weight:800;
 }
 .day.selected .day-num{color:#3C3489!important}
 .day.selected.today .day-num{background:#3C3489;color:#fff!important}
@@ -98,9 +98,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .solar-term{font-size:8px;font-weight:700;color:#1D9E75;line-height:1;text-align:center;width:100%}
 .hol-name{font-size:7.5px;font-weight:600;color:#A32D2D;line-height:1;margin-top:1px;text-align:center;max-width:100%;overflow:hidden}
 /* 事件圓點：日期數字正上方 */
-.ev-indicator{width:6px;height:6px;border-radius:50%;background:#1D9E75;margin:0 auto 2px;flex-shrink:0}
-.ev-indicator.holiday-day{background:#C0392B}
-.ev-indicator.selected-day{background:#3C3489}
+.ev-indicator{width:7px;height:7px;border-radius:50%;background:#F97316;margin:0 auto 2px;flex-shrink:0}
+.ev-indicator.holiday-day{background:#F97316}
+.ev-indicator.selected-day{background:#F97316}
 
 /* ── Tabs ── */
 .tab-bar{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:10px 0;gap:3px}
@@ -417,7 +417,7 @@ function addDay(grid,date,other){
   if(hasEvt){const dot=document.createElement('div');dot.className='ev-indicator'+(isHol?' holiday-day':'')+(isSel?' selected-day':'');div.appendChild(dot)}
   const num=document.createElement('div');num.className='day-num';num.textContent=date.getDate();div.appendChild(num);
   if(!other&&lu){
-    if(lu.jieqi){const st=document.createElement('div');st.className='solar-term';st.textContent=lu.jieqi;div.appendChild(st);const lt=document.createElement('div');lt.className='lunar-txt';lt.textContent=`${lu.month}${lu.day}`;div.appendChild(lt)}
+    if(lu.jieqi){const st=document.createElement('div');st.className='solar-term';st.textContent=lu.jieqi;div.appendChild(st);const lt=document.createElement('div');lt.className='lunar-txt';lt.textContent=`${lu.month}月${lu.day}`;div.appendChild(lt)}
     else{const lt=document.createElement('div');lt.className='lunar-txt';lt.textContent=lu.day==='初一'?lu.month+'月':lu.day;div.appendChild(lt)}
     if(isHol){const hn=document.createElement('div');hn.className='hol-name';const n=holidayData[key];hn.textContent=n.length>4?n.slice(0,4)+'…':n;div.appendChild(hn)}
   }
