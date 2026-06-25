@@ -97,10 +97,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .day.holiday:not(.other-month) .lunar-txt{color:#B05050}
 .solar-term{font-size:8px;font-weight:700;color:#1D9E75;line-height:1;text-align:center;width:100%}
 .hol-name{font-size:7.5px;font-weight:600;color:#A32D2D;line-height:1;margin-top:1px;text-align:center;max-width:100%;overflow:hidden}
-.day.has-evt::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:16px;height:3px;border-radius:3px;background:#1D9E75}
-.day.has-evt.holiday::after{background:#C0392B}
-.day.has-evt.selected::after{background:#534AB7}
-.day.today.has-evt::after{background:#534AB7}
+.day.has-evt::after{display:none}
+/* 事件小圓點：緊接在日期數字下方 */
+.ev-indicator{width:5px;height:5px;border-radius:50%;background:#1D9E75;margin:2px auto 0;flex-shrink:0}
+.ev-indicator.holiday-day{background:#C0392B}
+.ev-indicator.selected-day{background:#534AB7}
+.day.today .ev-indicator{background:#fff;margin-top:1px}
 
 /* ── Tabs ── */
 .tab-bar{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:10px 0;gap:3px}
@@ -415,6 +417,7 @@ function addDay(grid,date,other){
   if(isToday)cls+=' today';if(isSel)cls+=' selected';
   div.className=cls;
   const num=document.createElement('div');num.className='day-num';num.textContent=date.getDate();div.appendChild(num);
+  if(hasEvt){const dot=document.createElement('div');dot.className='ev-indicator'+(isHol?' holiday-day':'')+(isSel?' selected-day':'');div.appendChild(dot)}
   if(!other&&lu){
     if(lu.jieqi){const st=document.createElement('div');st.className='solar-term';st.textContent=lu.jieqi;div.appendChild(st);const lt=document.createElement('div');lt.className='lunar-txt';lt.textContent=`${lu.month}${lu.day}`;div.appendChild(lt)}
     else{const lt=document.createElement('div');lt.className='lunar-txt';lt.textContent=lu.day==='初一'?lu.month+'月':lu.day;div.appendChild(lt)}
