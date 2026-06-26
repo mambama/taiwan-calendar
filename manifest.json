@@ -4,11 +4,16 @@
   "description": "台灣農民曆、節日、事件與待辦一體的行事曆 App",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#534AB7",
   "theme_color": "#534AB7",
   "orientation": "portrait-primary",
   "lang": "zh-TW",
   "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
