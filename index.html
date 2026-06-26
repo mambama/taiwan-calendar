@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="台灣行事曆"/>
 <title>台灣農民曆行事曆</title>
 <link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23534AB7'/><rect x='10' y='18' width='44' height='36' rx='5' fill='white'/><rect x='10' y='18' width='44' height='14' rx='5' fill='%23EEEDFE'/><rect x='10' y='24' width='44' height='8' fill='%23EEEDFE'/><rect x='18' y='10' width='6' height='16' rx='3' fill='%23534AB7'/><rect x='40' y='10' width='6' height='16' rx='3' fill='%23534AB7'/><text x='32' y='46' font-size='16' font-weight='bold' text-anchor='middle' fill='%23534AB7' font-family='Arial'>曆</text></svg>"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23534AB7'/><rect x='10' y='18' width='44' height='36' rx='5' fill='white'/><rect x='10' y='18' width='44' height='14' rx='5' fill='%23EEEDFE'/><rect x='10' y='24' width='44' height='8' fill='%23EEEDFE'/><rect x='18' y='10' width='6' height='16' rx='3' fill='%23534AB7'/><rect x='40' y='10' width='6' height='16' rx='3' fill='%23534AB7'/><text x='32' y='46' font-size='16' font-weight='bold' text-anchor='middle' fill='%23534AB7' font-family='Arial'>曆</text></svg>"/>
 <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 <style>
 :root{--bg:#fff;--bg2:#f0f0f2;--tx:#0d1117;--tx2:#555e6b;--tx3:#9ca3af;--bd:#d1d5db;--bd2:#e9eaec;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -457,7 +459,8 @@ function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
   const grid=document.createElement('div');grid.className='reminder-grid';
   presets.forEach(p=>{
     const btn=document.createElement('button');
-    btn.className='rem-opt'+(nowMode?' now-style':'')+(activeLabel===p.label?' active':'');
+    const isActive=p.key==='none'?(!activeLabel):activeLabel===p.label;
+    btn.className='rem-opt'+(nowMode?' now-style':'')+(isActive?' active':'');
     btn.textContent=p.label;
     btn.addEventListener('click',()=>{
       if(p.key==='cu'){const cr=pop.querySelector('.custom-remind-row');cr.style.display=cr.style.display==='none'?'flex':'none';return}
@@ -555,9 +558,21 @@ function renderEventPanel(){
     }
     if(mode==='remind'){
       item.appendChild(buildRemindPopup({
-        presets:[{key:'10m',label:'10分鐘前',mins:10},{key:'2h',label:'2小時前',mins:120},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
+        presets:[{key:'none',label:'不提醒',mins:null},{key:'1d',label:'1天前',mins:60*24},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
         activeLabel:ev.remindLabel,nowMode:false,
-        onPreset:(mins,label)=>{if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList()}}
+        onPreset:(mins,label)=>{
+          if(mins===null){
+            // 清除提醒
+            if(origIdx>=0){
+              origEvts[origIdx].remindLabel=undefined;
+              const nkey=`evt-${dk}-${origEvts[origIdx].title}`;
+              if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
+            }
+            localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList();
+          }else{
+            if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList()}
+          }
+        }
       }));
     }
     if(mode==='repeat'){
@@ -714,7 +729,17 @@ document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selecte
   let entry;
   if(m){const isTimeFirst=/^\d{1,2}:\d{2}$/.test(m[1]);entry={title:isTimeFirst?m[2].trim():m[1].trim(),time:isTimeFirst?m[1]:m[2]};}
   else{entry={title:val};}
-  localEvents[dk]=[...(localEvents[dk]||[]),entry];inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
+  localEvents[dk]=[...(localEvents[dk]||[]),entry];
+  // 預設提醒：事件當天 00:00
+  const newEvt=localEvents[dk][localEvents[dk].length-1];
+  const base=new Date(selectedDate);base.setHours(0,0,0,0);
+  const ms=base-Date.now();
+  newEvt.remindLabel='當天 00:00';
+  if(notifPermission==='granted'&&ms>0){
+    const nkey=`evt-${dk}-${newEvt.title}`;
+    scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body:newEvt.time?newEvt.time+' '+newEvt.title:newEvt.title});delete scheduledNotifs[nkey]},ms);
+  }
+  inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
 document.getElementById('add-todo-btn').addEventListener('click',()=>{const inp=document.getElementById('todo-input'),val=inp.value.trim();if(!val)return;todos.push({id:nextId++,text:val,done:false});inp.value='';saveTodos();renderTodos()});
 document.getElementById('todo-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-todo-btn').click()});
