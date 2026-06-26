@@ -128,6 +128,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .ev-title{font-size:14px;font-weight:600}
 .remind-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;border-radius:10px;padding:2px 7px;white-space:nowrap}
 .remind-badge.now{color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A}
+.repeat-badge{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;color:#0F6E56;background:#E1F5EE;border-radius:10px;padding:2px 7px;white-space:nowrap}
+.time-badge{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;color:#374151;background:#F3F4F6;border-radius:10px;padding:2px 7px;white-space:nowrap;border:1px solid var(--bd)}
 .ev-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .ic-btn{background:none;border:1.5px solid var(--bd);border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:15px;flex-shrink:0}
 .ic-btn.active-mode{background:#EEEDFE;border-color:#534AB7;color:#534AB7}
@@ -284,7 +286,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
       <div id="hol-box"></div><div id="lunar-box"></div>
       <div class="event-list" id="event-list"></div>
       <div class="add-bar">
-        <input type="text" id="evt-input" placeholder="輸入事件，如：開會 14:00"/>
+        <input type="text" id="evt-input" placeholder="事件名稱（可加時間，如：開會 14:00）"/>
         <button class="abtn" id="add-evt-btn">+</button>
       </div>
     </div>
@@ -392,6 +394,30 @@ function getLunar(date){
 const YI=['祭祀','出行','嫁娶','搬家','開業','會友','求財','動土','納畜','造屋'];
 const JI=['殺伐','安葬','行喪','破土','開倉','出貨','移徙','動土'];
 
+// ── 重複事件輔助 ───────────────────────────────────────
+function parseDKey(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+
+function getEventsForDate(date){
+  const dk=dKey(date);
+  const direct=(localEvents[dk]||[]).map(ev=>({...ev,_dk:dk,_recurring:false}));
+  const recurring=[];
+  Object.entries(localEvents).forEach(([storedDk,evts])=>{
+    if(storedDk===dk)return;
+    const orig=parseDKey(storedDk);
+    evts.forEach(ev=>{
+      if(!ev.repeat)return;
+      const sameDay=orig.getDate()===date.getDate();
+      const sameMonthDay=orig.getMonth()===date.getMonth()&&orig.getDate()===date.getDate();
+      if(ev.repeat==='monthly'&&sameDay&&date>orig){
+        recurring.push({...ev,_dk:storedDk,_recurring:true});
+      }else if(ev.repeat==='yearly'&&sameMonthDay&&date.getFullYear()>orig.getFullYear()){
+        recurring.push({...ev,_dk:storedDk,_recurring:true});
+      }
+    });
+  });
+  return[...direct,...recurring];
+}
+
 // ── 行事曆 ─────────────────────────────────────────────
 function renderCalendar(){
   document.getElementById('month-label').textContent=`${curYear}年${curMonth+1}月`;
@@ -407,7 +433,7 @@ function addDay(grid,date,other){
   const key=yyyymmdd(date),dk=dKey(date),dow=date.getDay();
   const isHol=!!holidayData[key],isToday=date.toDateString()===today.toDateString();
   const isSel=selectedDate&&date.toDateString()===selectedDate.toDateString();
-  const lu=other?null:getLunar(date),hasEvt=!other&&!!(localEvents[dk]&&localEvents[dk].length);
+  const lu=other?null:getLunar(date),hasEvt=!other&&getEventsForDate(date).length>0;
   const div=document.createElement('div');
   let cls='day';
   if(other)cls+=' other-month';
@@ -443,7 +469,7 @@ function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
   const cr=document.createElement('div');cr.className='custom-remind-row';cr.style.display='none';
   const numInp=document.createElement('input');numInp.type='number';numInp.min='1';numInp.value='1';
   const unitSel=document.createElement('select');
-  const units=nowMode?[['m','分鐘後'],['h','小時後'],['d','天後']]:[['m','分鐘前'],['h','小時前'],['d','天前'],['w','週前'],['mo','月前']];
+  const units=nowMode?[['m','分鐘後'],['h','小時後'],['d','天後']]:[['d','天前'],['w','週前'],['mo','月前']];
   units.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;unitSel.appendChild(o)});
   const setBtn=document.createElement('button');setBtn.className='set-rem-btn'+(nowMode?' orange':'');setBtn.textContent='設定';
   setBtn.addEventListener('click',()=>{
@@ -458,11 +484,13 @@ function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
 }
 function setEvtReminder(ev,dk,minsBefore,label,date){
   if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
-  const base=new Date(date);base.setHours(0,0,0,0);
+  const[h,m]=(ev.time||'00:00').split(':').map(Number);
+  const base=new Date(date);base.setHours(h,m,0,0);
   const ms=base-Date.now()-minsBefore*60000,nkey=`evt-${dk}-${ev.title}`;
   if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
-  if(ms<=0)new Notification('行事曆提醒',{body:ev.title});
-  else scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body:ev.title});delete scheduledNotifs[nkey]},ms);
+  const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
+  if(ms<=0)new Notification('行事曆提醒',{body});
+  else scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body});delete scheduledNotifs[nkey]},ms);
   ev.remindLabel=label;return true;
 }
 function setTodoReminder(t,minsFromNow,label){
@@ -485,34 +513,92 @@ function renderEventPanel(){
     lunarBox.innerHTML=`<div class="lunar-detail"><div class="lunar-main">農曆 ${lu.month}月${lu.day}${lu.jieqi?` · <span style="color:#1D9E75">${lu.jieqi}</span>`:''}</div><div class="lunar-sub">${lu.gz} ${lu.sx?'· '+lu.sx+'年':''}</div><div class="yi-ji">${YI.slice(seed,seed+3).map(y=>`<span class="yi-tag">宜 ${y}</span>`).join('')}${JI.slice(seed%4,seed%4+2).map(j=>`<span class="ji-tag">忌 ${j}</span>`).join('')}</div></div>`}
   else lunarBox.innerHTML='';
   list.innerHTML='';
-  const evts=localEvents[dk]||[];
-  if(!evts.length){list.innerHTML='<div class="empty-msg">這天沒有事件</div>';return}
-  evts.forEach((ev,i)=>{
-    const isExp=expandedEvt&&expandedEvt.dk===dk&&expandedEvt.idx===i,mode=isExp?expandedEvt.mode:null;
+  const allEvts=getEventsForDate(selectedDate);
+  if(!allEvts.length){list.innerHTML='<div class="empty-msg">這天沒有事件</div>';return}
+  allEvts.forEach((ev,i)=>{
+    const dk=ev._dk;
+    const isRecurring=ev._recurring;
+    // index within the original stored array
+    const origEvts=localEvents[dk]||[];
+    const origIdx=origEvts.findIndex(e=>e.title===ev.title&&e.repeat===ev.repeat);
+    const isExp=expandedEvt&&expandedEvt.dk===dk&&expandedEvt.idx===origIdx;
+    const mode=isExp?expandedEvt.mode:null;
     const item=document.createElement('div');item.className='event-item';
     const main=document.createElement('div');main.className='event-main';
-    const badge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
-    main.innerHTML=`<div class="ev-dot"></div><div class="ev-title-wrap"><span class="ev-title">${ev.title}</span>${badge}</div>
-      <div class="ev-actions"><button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button><button class="ic-btn bell${mode==='remind'?' active-mode':''}">🔔</button><button class="ic-btn del">×</button></div>`;
+    const remBadge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
+    const repBadge=ev.repeat?`<span class="repeat-badge">${ev.repeat==='monthly'?'🔁每月':'🔁每年'}</span>`:'';
+    const timeBadge=ev.time?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
+    main.innerHTML=`<div class="ev-dot"></div><div class="ev-title-wrap"><span class="ev-title">${ev.title}</span>${timeBadge}${repBadge}${remBadge}</div>
+      <div class="ev-actions">
+        <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
+        <button class="ic-btn bell${mode==='remind'?' active-mode':''}">🔔</button>
+        <button class="ic-btn repeat${mode==='repeat'?' active-mode':''}">🔁</button>
+        <button class="ic-btn del${mode==='confirm-del'?' active-mode':''}">×</button>
+      </div>`;
     item.appendChild(main);
     if(mode==='edit'){
-      const bar=document.createElement('div');bar.className='sub-bar';
-      bar.innerHTML=`<input type="text"/><button class="cancel-btn2">取消</button><button class="save-btn2">儲存</button>`;
+      const bar=document.createElement('div');bar.className='sub-bar';bar.style.flexWrap='wrap';
+      bar.innerHTML=`<input type="text" class="edit-title-inp" placeholder="事件名稱" style="flex:1;min-width:120px"/><input type="time" class="edit-time-inp" style="width:110px;font-size:13px;padding:5px 8px;border:1.5px solid #534AB7;border-radius:10px;background:var(--bg);color:var(--tx);outline:none"/><button class="cancel-btn2">取消</button><button class="save-btn2">儲存</button>`;
       item.appendChild(bar);
-      setTimeout(()=>{const inp=bar.querySelector('input');if(inp){inp.value=ev.title;inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}},0);
-      bar.querySelector('.save-btn2').addEventListener('click',()=>{const v=bar.querySelector('input').value.trim();if(!v)return;evts[i]={...evts[i],title:v};localEvents[dk]=evts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
+      setTimeout(()=>{
+        const ti=bar.querySelector('.edit-title-inp');const tm=bar.querySelector('.edit-time-inp');
+        if(ti){ti.value=ev.title;ti.focus();}
+        if(tm&&ev.time)tm.value=ev.time;
+      },0);
+      bar.querySelector('.save-btn2').addEventListener('click',()=>{
+        const v=bar.querySelector('.edit-title-inp').value.trim();if(!v)return;
+        const t=bar.querySelector('.edit-time-inp').value;
+        if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],title:v,time:t||undefined};
+        localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+      });
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt=null;renderEventPanel()});
     }
     if(mode==='remind'){
       item.appendChild(buildRemindPopup({
         presets:[{key:'10m',label:'10分鐘前',mins:10},{key:'2h',label:'2小時前',mins:120},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
         activeLabel:ev.remindLabel,nowMode:false,
-        onPreset:(mins,label)=>{if(setEvtReminder(ev,dk,mins,label,selectedDate)){localEvents[dk]=evts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList()}}
+        onPreset:(mins,label)=>{if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList()}}
       }));
     }
-    main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='edit')?null:{dk,idx:i,mode:'edit'};renderEventPanel()});
-    main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='remind')?null:{dk,idx:i,mode:'remind'};renderEventPanel()});
-    main.querySelector('.ic-btn.del').addEventListener('click',()=>{evts.splice(i,1);localEvents[dk]=evts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar()});
+    if(mode==='repeat'){
+      const pop=document.createElement('div');pop.className='reminder-popup';
+      const opts=[{key:'',label:'不重複'},{key:'monthly',label:'🔁 每月同一天'},{key:'yearly',label:'🔁 每年同一天'}];
+      const g=document.createElement('div');g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 0 8px';
+      opts.forEach(o=>{
+        const btn=document.createElement('button');
+        btn.className='rem-opt'+(ev.repeat===(o.key||undefined)?o.key===''?(!ev.repeat?' active':''):' active':'');
+        btn.textContent=o.label;btn.style.fontSize='12px';
+        btn.addEventListener('click',()=>{
+          if(origIdx>=0){origEvts[origIdx]={...origEvts[origIdx],repeat:o.key||undefined};localEvents[dk]=origEvts;}
+          expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+        });
+        g.appendChild(btn);
+      });
+      pop.appendChild(g);
+      if(ev.repeat){
+        const note=document.createElement('div');
+        note.style.cssText='font-size:11px;color:var(--tx2);padding:0 0 6px;line-height:1.5';
+        note.textContent=ev.repeat==='monthly'
+          ?`每月 ${parseDKey(dk).getDate()} 號自動顯示`
+          :`每年 ${parseDKey(dk).getMonth()+1}/${parseDKey(dk).getDate()} 自動顯示`;
+        pop.appendChild(note);
+      }
+      item.appendChild(pop);
+    }
+    if(mode==='confirm-del'){
+      const bar=document.createElement('div');bar.className='sub-bar';bar.style.cssText='padding:0 12px 10px;gap:8px;align-items:center';
+      bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此事件？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
+      item.appendChild(bar);
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt=null;renderEventPanel()});
+      bar.querySelector('.save-btn2').addEventListener('click',()=>{
+        if(origIdx>=0)origEvts.splice(origIdx,1);
+        localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar();
+      });
+    }
+    main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='edit')?null:{dk,idx:origIdx,mode:'edit'};renderEventPanel()});
+    main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='remind')?null:{dk,idx:origIdx,mode:'remind'};renderEventPanel()});
+    main.querySelector('.ic-btn.repeat').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='repeat')?null:{dk,idx:origIdx,mode:'repeat'};renderEventPanel()});
+    main.querySelector('.ic-btn.del').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='confirm-del')?null:{dk,idx:origIdx,mode:'confirm-del'};renderEventPanel()});
     list.appendChild(item);
   });
 }
@@ -564,7 +650,7 @@ function renderMonthList(){
   if(listMode==='events'){
     document.getElementById('list-title').textContent=`${curYear}年${curMonth+1}月 事件`;
     const dim=new Date(curYear,curMonth+1,0).getDate();let total=0;const groups=[];
-    for(let d=1;d<=dim;d++){const date=new Date(curYear,curMonth,d),dk=dKey(date);const evts=localEvents[dk]||[];if(evts.length){total+=evts.length;groups.push({date,evts:[...evts]})}}
+    for(let d=1;d<=dim;d++){const date=new Date(curYear,curMonth,d);const evts=getEventsForDate(date);if(evts.length){total+=evts.length;groups.push({date,evts})}}
     document.getElementById('list-count').textContent=total?`共 ${total} 筆`:'無事件';
     if(!groups.length){container.innerHTML='<div class="list-empty">本月尚無事件</div>';return}
     const dayNames=['日','一','二','三','四','五','六'];
@@ -576,7 +662,8 @@ function renderMonthList(){
       group.appendChild(dl);
       evts.forEach(ev=>{
         const row=document.createElement('div');row.className='list-evt';
-        row.innerHTML=`<div class="list-evt-dot"></div><span class="list-evt-text">${ev.title}</span>${ev.remindLabel?`<span class="list-evt-remind">🔔 ${ev.remindLabel}</span>`:''}<span class="list-evt-arrow">›</span>`;
+        const repTxt=ev.repeat?`<span style="font-size:10px;color:#0F6E56;background:#E1F5EE;padding:1px 5px;border-radius:8px;font-weight:600">${ev.repeat==='monthly'?'🔁每月':'🔁每年'}</span>`:'';
+        row.innerHTML=`<div class="list-evt-dot${ev._recurring?' style="background:#1D9E75"':''}"></div><span class="list-evt-text">${ev.title}</span>${repTxt}${ev.remindLabel?`<span class="list-evt-remind">🔔 ${ev.remindLabel}</span>`:''}<span class="list-evt-arrow">›</span>`;
         row.addEventListener('click',()=>{selectedDate=date;expandedEvt=null;toggleList(false);switchTab('events');renderCalendar();renderEventPanel()});
         group.appendChild(row);
       });
@@ -621,7 +708,13 @@ document.getElementById('list-btn').addEventListener('click',()=>toggleList());
 document.getElementById('prev').addEventListener('click',()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--}loadHolidays(curYear,true);renderCalendar();if(showingList)renderMonthList()});
 document.getElementById('next').addEventListener('click',()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++}loadHolidays(curYear,true);renderCalendar();if(showingList)renderMonthList()});
 document.getElementById('today-btn').addEventListener('click',()=>{curYear=today.getFullYear();curMonth=today.getMonth();selectedDate=today;expandedEvt=null;if(showingList)toggleList(false);renderCalendar();renderEventPanel()});
-document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selectedDate){alert('請先點選日期');return}const inp=document.getElementById('evt-input'),val=inp.value.trim();if(!val)return;const dk=dKey(selectedDate);localEvents[dk]=[...(localEvents[dk]||[]),{title:val}];inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
+document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selectedDate){alert('請先點選日期');return}const inp=document.getElementById('evt-input'),val=inp.value.trim();if(!val)return;const dk=dKey(selectedDate);
+  // 解析格式：「事件名稱 14:00」或「14:00 事件名稱」
+  const m=val.match(/^(.+?)\s+(\d{1,2}:\d{2})$/)|| val.match(/^(\d{1,2}:\d{2})\s+(.+)$/);
+  let entry;
+  if(m){const isTimeFirst=/^\d{1,2}:\d{2}$/.test(m[1]);entry={title:isTimeFirst?m[2].trim():m[1].trim(),time:isTimeFirst?m[1]:m[2]};}
+  else{entry={title:val};}
+  localEvents[dk]=[...(localEvents[dk]||[]),entry];inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
 document.getElementById('add-todo-btn').addEventListener('click',()=>{const inp=document.getElementById('todo-input'),val=inp.value.trim();if(!val)return;todos.push({id:nextId++,text:val,done:false});inp.value='';saveTodos();renderTodos()});
 document.getElementById('todo-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-todo-btn').click()});
