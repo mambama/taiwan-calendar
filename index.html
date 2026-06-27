@@ -399,6 +399,42 @@ const JI=['殺伐','安葬','行喪','破土','開倉','出貨','移徙','動土
 // ── 重複事件輔助 ───────────────────────────────────────
 function parseDKey(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
 
+function getRepeatLabel(repeat){
+  if(!repeat)return'';
+  if(repeat==='monthly')return'🔁每月';
+  if(repeat==='yearly')return'🔁每年';
+  if(typeof repeat==='object'){
+    const u={week:'週',month:'月',year:'年'};
+    return`🔁每${repeat.n}${u[repeat.unit]||repeat.unit}`;
+  }
+  return'🔁';
+}
+
+function matchesRepeat(date,orig,repeat){
+  if(!repeat||date<=orig)return false;
+  if(repeat==='monthly') return date.getDate()===orig.getDate();
+  if(repeat==='yearly') return date.getMonth()===orig.getMonth()&&date.getDate()===orig.getDate()&&date.getFullYear()>orig.getFullYear();
+  if(typeof repeat==='object'){
+    const{n,unit}=repeat;
+    if(unit==='week'){
+      if(date.getDay()!==orig.getDay())return false;
+      const days=Math.round((date-orig)/(86400000));
+      return days%(n*7)===0;
+    }
+    if(unit==='month'){
+      if(date.getDate()!==orig.getDate())return false;
+      const diff=(date.getFullYear()-orig.getFullYear())*12+(date.getMonth()-orig.getMonth());
+      return diff>0&&diff%n===0;
+    }
+    if(unit==='year'){
+      if(date.getMonth()!==orig.getMonth()||date.getDate()!==orig.getDate())return false;
+      const diff=date.getFullYear()-orig.getFullYear();
+      return diff>0&&diff%n===0;
+    }
+  }
+  return false;
+}
+
 function getEventsForDate(date){
   const dk=dKey(date);
   const direct=(localEvents[dk]||[]).map(ev=>({...ev,_dk:dk,_recurring:false}));
@@ -408,13 +444,8 @@ function getEventsForDate(date){
     const orig=parseDKey(storedDk);
     evts.forEach(ev=>{
       if(!ev.repeat)return;
-      const sameDay=orig.getDate()===date.getDate();
-      const sameMonthDay=orig.getMonth()===date.getMonth()&&orig.getDate()===date.getDate();
-      if(ev.repeat==='monthly'&&sameDay&&date>orig){
+      if(matchesRepeat(date,orig,ev.repeat))
         recurring.push({...ev,_dk:storedDk,_recurring:true});
-      }else if(ev.repeat==='yearly'&&sameMonthDay&&date.getFullYear()>orig.getFullYear()){
-        recurring.push({...ev,_dk:storedDk,_recurring:true});
-      }
     });
   });
   return[...direct,...recurring];
@@ -529,7 +560,7 @@ function renderEventPanel(){
     const item=document.createElement('div');item.className='event-item';
     const main=document.createElement('div');main.className='event-main';
     const remBadge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
-    const repBadge=ev.repeat?`<span class="repeat-badge">${ev.repeat==='monthly'?'🔁每月':'🔁每年'}</span>`:'';
+    const repBadge=ev.repeat?`<span class="repeat-badge">${getRepeatLabel(ev.repeat)}</span>`:'';
     const timeBadge=ev.time?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
     main.innerHTML=`<div class="ev-dot"></div><div class="ev-title-wrap"><span class="ev-title">${ev.title}</span>${timeBadge}${repBadge}${remBadge}</div>
       <div class="ev-actions">
@@ -577,25 +608,62 @@ function renderEventPanel(){
     }
     if(mode==='repeat'){
       const pop=document.createElement('div');pop.className='reminder-popup';
-      const opts=[{key:'',label:'不重複'},{key:'monthly',label:'🔁 每月同一天'},{key:'yearly',label:'🔁 每年同一天'}];
-      const g=document.createElement('div');g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 0 8px';
+      const opts=[{key:'',label:'不重複'},{key:'monthly',label:'每月'},{key:'yearly',label:'每年'},{key:'custom',label:'自訂'}];
+      const g=document.createElement('div');g.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 0 6px';
       opts.forEach(o=>{
         const btn=document.createElement('button');
-        btn.className='rem-opt'+(ev.repeat===(o.key||undefined)?o.key===''?(!ev.repeat?' active':''):' active':'');
+        let isActive=false;
+        if(o.key===''&&!ev.repeat)isActive=true;
+        else if(o.key==='monthly'&&ev.repeat==='monthly')isActive=true;
+        else if(o.key==='yearly'&&ev.repeat==='yearly')isActive=true;
+        else if(o.key==='custom'&&typeof ev.repeat==='object')isActive=true;
+        btn.className='rem-opt'+(isActive?' active':'');
         btn.textContent=o.label;btn.style.fontSize='12px';
         btn.addEventListener('click',()=>{
-          if(origIdx>=0){origEvts[origIdx]={...origEvts[origIdx],repeat:o.key||undefined};localEvents[dk]=origEvts;}
-          expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+          if(o.key==='custom'){
+            const cr=pop.querySelector('.custom-repeat-row');
+            cr.style.display=cr.style.display==='none'?'flex':'none';return;
+          }
+          if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],repeat:o.key||undefined};
+          localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
         });
         g.appendChild(btn);
       });
       pop.appendChild(g);
+
+      // 自訂循環列
+      const cr=document.createElement('div');cr.className='custom-repeat-row';
+      cr.style.cssText='display:none;gap:5px;align-items:center;padding:0 0 6px;flex-wrap:wrap';
+      const numInp=document.createElement('input');
+      numInp.type='number';numInp.min='1';numInp.value=typeof ev.repeat==='object'?ev.repeat.n:'2';
+      numInp.style.cssText='width:52px;font-size:13px;padding:5px 6px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);outline:none';
+      const unitSel=document.createElement('select');
+      unitSel.style.cssText='flex:1;font-size:13px;padding:5px 6px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer';
+      [['week','週（同一週幾）'],['month','月（同一日）'],['year','年（同月同日）']].forEach(([v,t])=>{
+        const o=document.createElement('option');o.value=v;o.textContent=t;
+        if(typeof ev.repeat==='object'&&ev.repeat.unit===v)o.selected=true;
+        unitSel.appendChild(o);
+      });
+      const setBtn=document.createElement('button');
+      setBtn.textContent='設定';setBtn.style.cssText='font-size:12px;font-weight:700;padding:5px 12px;border:none;border-radius:8px;background:#1D9E75;color:#fff;cursor:pointer;white-space:nowrap';
+      setBtn.addEventListener('click',()=>{
+        const n=parseInt(numInp.value)||2,unit=unitSel.value;
+        if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],repeat:{n,unit}};
+        localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+      });
+      cr.appendChild(numInp);cr.appendChild(unitSel);cr.appendChild(setBtn);
+      pop.appendChild(cr);
+
+      // 若已有自訂循環，預設展開
+      if(typeof ev.repeat==='object')cr.style.display='flex';
+
       if(ev.repeat){
         const note=document.createElement('div');
-        note.style.cssText='font-size:11px;color:var(--tx2);padding:0 0 6px;line-height:1.5';
-        note.textContent=ev.repeat==='monthly'
-          ?`每月 ${parseDKey(dk).getDate()} 號自動顯示`
-          :`每年 ${parseDKey(dk).getMonth()+1}/${parseDKey(dk).getDate()} 自動顯示`;
+        note.style.cssText='font-size:11px;color:var(--tx2);padding:2px 0 6px;line-height:1.5';
+        const orig2=parseDKey(dk);
+        note.textContent=ev.repeat==='monthly'?`每月 ${orig2.getDate()} 號重複`:
+          ev.repeat==='yearly'?`每年 ${orig2.getMonth()+1}/${orig2.getDate()} 重複`:
+          `從 ${orig2.getMonth()+1}/${orig2.getDate()} 起，${getRepeatLabel(ev.repeat).replace('🔁','')}重複一次`;
         pop.appendChild(note);
       }
       item.appendChild(pop);
@@ -677,7 +745,7 @@ function renderMonthList(){
       group.appendChild(dl);
       evts.forEach(ev=>{
         const row=document.createElement('div');row.className='list-evt';
-        const repTxt=ev.repeat?`<span style="font-size:10px;color:#0F6E56;background:#E1F5EE;padding:1px 5px;border-radius:8px;font-weight:600">${ev.repeat==='monthly'?'🔁每月':'🔁每年'}</span>`:'';
+        const repTxt=ev.repeat?`<span style="font-size:10px;color:#0F6E56;background:#E1F5EE;padding:1px 5px;border-radius:8px;font-weight:600">${getRepeatLabel(ev.repeat)}</span>`:'';
         row.innerHTML=`<div class="list-evt-dot${ev._recurring?' style="background:#1D9E75"':''}"></div><span class="list-evt-text">${ev.title}</span>${repTxt}${ev.remindLabel?`<span class="list-evt-remind">🔔 ${ev.remindLabel}</span>`:''}<span class="list-evt-arrow">›</span>`;
         row.addEventListener('click',()=>{selectedDate=date;expandedEvt=null;toggleList(false);switchTab('events');renderCalendar();renderEventPanel()});
         group.appendChild(row);
