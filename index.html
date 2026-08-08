@@ -604,22 +604,20 @@ function setEvtReminder(ev,dk,minsBefore,label,date){
   const sendAt=base-minsBefore*60000;
   const ms=sendAt-Date.now();
   const nkey=`evt-${dk}-${ev.title}`;
-  if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
   const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
-  // 本地通知（App 開著時）
-  if(ms<=0)new Notification('行事曆提醒',{body});
-  else scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body});delete scheduledNotifs[nkey]},ms);
+  // 本地通知（App 開著時，iOS/Android 相容）
+  scheduleNotif(nkey,'行事曆提醒',body,ms);
   // Web Push（App 關閉時）
   const schedId=`${nkey}-${sendAt}`;
   cancelWebPush(schedId);
-  if(ms>0) scheduleWebPush(schedId, body, sendAt);
+  if(ms>0) scheduleWebPush(schedId,body,sendAt);
   ev.remindLabel=label;return true;
 }
 function setTodoReminder(t,minsFromNow,label){
   if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
   const nkey=`todo-${t.id}`;
-  if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
-  scheduledNotifs[nkey]=setTimeout(()=>{new Notification('待辦提醒',{body:t.text});delete scheduledNotifs[nkey]},minsFromNow*60000);
+  const ms=minsFromNow*60000;
+  scheduleNotif(nkey,'待辦提醒',t.text,ms);
   t.remindLabel=label;return true;
 }
 
@@ -688,11 +686,9 @@ function renderEventPanel(){
             const base=new Date(selectedDate);base.setHours(0,0,0,0);
             const ms=base-Date.now();
             if(ms>0){
-              scheduledNotifs[nkey]=setTimeout(()=>{
-                new Notification('行事曆提醒',{body:updated.time?updated.time+' '+updated.title:updated.title});
-                delete scheduledNotifs[nkey];
-              },ms);
-              scheduleWebPush(`${nkey}-${base.getTime()}`,updated.time?updated.time+' '+updated.title:updated.title,base.getTime());
+              const body2=updated.time?`${updated.time} ${updated.title}`:updated.title;
+              scheduleNotif(nkey,'行事曆提醒',body2,ms);
+              scheduleWebPush(`${nkey}-${base2.getTime()}`,body2,base2.getTime());
             }
           }
         }
@@ -897,7 +893,7 @@ document.querySelectorAll('.yr-chip').forEach(chip=>{chip.addEventListener('clic
 
 // 通知
 function updateNotifUI(){const btn=document.getElementById('notif-btn'),lbl=document.getElementById('notif-label');if(notifPermission==='granted'){btn.className='notif-pill on';lbl.textContent='通知已開啟'}else if(notifPermission==='denied'){btn.className='notif-pill off';lbl.textContent='通知被封鎖'}else{btn.className='notif-pill';lbl.textContent='開啟通知'}}
-document.getElementById('notif-btn').addEventListener('click',async()=>{if(notifPermission==='denied'){alert('通知已被封鎖，請至瀏覽器設定手動允許。');return}if(!('Notification' in window)){alert('此環境不支援通知功能。');return}const p=await Notification.requestPermission();notifPermission=p;updateNotifUI();if(p==='granted'){new Notification('✅ 通知已開啟',{body:'事件與待辦提醒將準時通知您'});setupPush();}});
+document.getElementById('notif-btn').addEventListener('click',async()=>{if(notifPermission==='denied'){alert('通知已被封鎖，請至瀏覽器設定手動允許。');return}if(!('Notification' in window)){alert('此環境不支援通知功能。');return}const p=await Notification.requestPermission();notifPermission=p;updateNotifUI();if(p==='granted'){showNotif('✅ 通知已開啟','事件與待辦提醒將準時通知您','test');setupPush();}});
 document.getElementById('update-hol-btn').addEventListener('click',()=>{holidayData={};loadHolidays(curYear)});
 document.getElementById('sync-btn').addEventListener('click',()=>{const b=document.getElementById('sync-box');b.style.display=b.style.display==='none'?'block':'none'});
 document.getElementById('list-btn').addEventListener('click',()=>toggleList());
@@ -919,12 +915,9 @@ document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selecte
   newEvt.remindLabel=newEvt.time?`當天 ${newEvt.time}`:'當天 00:00';
   if(notifPermission==='granted'){
     const nkey=`evt-${dk}-${newEvt.title}`;
-    if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
     const body=newEvt.time?`${newEvt.time} ${newEvt.title}`:newEvt.title;
-    if(ms>0){
-      scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body});delete scheduledNotifs[nkey]},ms);
-      scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime());
-    }
+    scheduleNotif(nkey,'行事曆提醒',body,ms);
+    if(ms>0) scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime());
   }
   inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
@@ -938,6 +931,31 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPro
 document.getElementById('install-btn').addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install-banner').style.display='none'});
 document.getElementById('install-dismiss').addEventListener('click',()=>{document.getElementById('install-banner').style.display='none'});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+
+// ── 通知輔助（iOS/Android 相容）────────────────────────
+// new Notification() 在 iPhone Safari 無效，必須用 SW.showNotification()
+async function showNotif(title, body, tag){
+  try{
+    if('serviceWorker' in navigator){
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title,{
+        body, icon:'/icon-192.png', badge:'/icon-192.png',
+        tag: tag||'cal', vibrate:[200,100,200], requireInteraction:false
+      });
+    } else {
+      new Notification(title,{body});
+    }
+  }catch(e){ console.warn('通知失敗:',e.message); }
+}
+
+function scheduleNotif(nkey, title, body, ms){
+  if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
+  if(ms <= 0){ showNotif(title, body, nkey); return; }
+  scheduledNotifs[nkey] = setTimeout(()=>{
+    showNotif(title, body, nkey);
+    delete scheduledNotifs[nkey];
+  }, ms);
+}
 
 // ── 深色模式 ──────────────────────────────────────────
 function applyTheme(dark){
