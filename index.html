@@ -342,7 +342,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 // ── Web Push 設定 ─────────────────────────────────────
 // 部署 Cloudflare Worker 後填入網址，例如：
 // 'https://tw-calendar-push.你的帳號.workers.dev'
-const WORKER_URL = 'https://dwmmamba.workers.dev';   // ← 填入你的 Worker 網址
+const WORKER_URL = '';   // ← 填入你的 Worker 網址
 
 let pushSubscription = null;
 let userId = null;
@@ -670,8 +670,33 @@ function renderEventPanel(){
       bar.querySelector('.save-btn2').addEventListener('click',()=>{
         const v=bar.querySelector('.edit-title-inp').value.trim();if(!v)return;
         const t=bar.querySelector('.edit-time-inp').value;
-        if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],title:v,time:t||undefined};
-        localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+        if(origIdx>=0){
+          const updated={...origEvts[origIdx],title:v,time:t||undefined};
+          origEvts[origIdx]=updated;
+          localEvents[dk]=origEvts;
+
+          // 如果原本有提醒，用新的時間重新排程
+          if(updated.remindLabel&&updated.remindLabel!=='當天 00:00'&&notifPermission==='granted'){
+            // 取出原提醒的分鐘數（從 label 反推）
+            const labelToMins={'10分鐘前':10,'1天前':60*24,'3天前':60*24*3};
+            const mins=labelToMins[updated.remindLabel];
+            if(mins!=null) setEvtReminder(updated,dk,mins,updated.remindLabel,selectedDate);
+          } else if(updated.remindLabel==='當天 00:00'&&notifPermission==='granted'){
+            // 重新設定當天 00:00 提醒
+            const nkey=`evt-${dk}-${updated.title}`;
+            if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
+            const base=new Date(selectedDate);base.setHours(0,0,0,0);
+            const ms=base-Date.now();
+            if(ms>0){
+              scheduledNotifs[nkey]=setTimeout(()=>{
+                new Notification('行事曆提醒',{body:updated.time?updated.time+' '+updated.title:updated.title});
+                delete scheduledNotifs[nkey];
+              },ms);
+              scheduleWebPush(`${nkey}-${base.getTime()}`,updated.time?updated.time+' '+updated.title:updated.title,base.getTime());
+            }
+          }
+        }
+        expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
       });
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt=null;renderEventPanel()});
     }
@@ -886,14 +911,20 @@ document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selecte
   if(m){const isTimeFirst=/^\d{1,2}:\d{2}$/.test(m[1]);entry={title:isTimeFirst?m[2].trim():m[1].trim(),time:isTimeFirst?m[1]:m[2]};}
   else{entry={title:val};}
   localEvents[dk]=[...(localEvents[dk]||[]),entry];
-  // 預設提醒：事件當天 00:00
+  // 預設提醒：若有填時間則以該時間為基準，否則當天 00:00
   const newEvt=localEvents[dk][localEvents[dk].length-1];
-  const base=new Date(selectedDate);base.setHours(0,0,0,0);
+  const[rh,rm]=(newEvt.time||'00:00').split(':').map(Number);
+  const base=new Date(selectedDate);base.setHours(rh,rm,0,0);
   const ms=base-Date.now();
-  newEvt.remindLabel='當天 00:00';
-  if(notifPermission==='granted'&&ms>0){
+  newEvt.remindLabel=newEvt.time?`當天 ${newEvt.time}`:'當天 00:00';
+  if(notifPermission==='granted'){
     const nkey=`evt-${dk}-${newEvt.title}`;
-    scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body:newEvt.time?newEvt.time+' '+newEvt.title:newEvt.title});delete scheduledNotifs[nkey]},ms);
+    if(scheduledNotifs[nkey])clearTimeout(scheduledNotifs[nkey]);
+    const body=newEvt.time?`${newEvt.time} ${newEvt.title}`:newEvt.title;
+    if(ms>0){
+      scheduledNotifs[nkey]=setTimeout(()=>{new Notification('行事曆提醒',{body});delete scheduledNotifs[nkey]},ms);
+      scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime());
+    }
   }
   inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
