@@ -72,18 +72,21 @@ self.addEventListener('push', event => {
   );
 });
 
-// ── 點擊通知：開啟 App ────────────────────────────────
+// ── 點擊通知：開啟正確的 App 網址 ───────────────────
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  // 使用 Service Worker 的 scope 作為 App 網址（自動對應 GitHub Pages 子路徑）
+  const appUrl = self.registration.scope;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // 如果 App 已經開著，直接 focus
       for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
+        if (client.url.startsWith(appUrl) && 'focus' in client) {
           return client.focus();
         }
       }
-      if (clients.openWindow) return clients.openWindow(url);
+      // App 沒開著，開啟新視窗
+      if (clients.openWindow) return clients.openWindow(appUrl);
     })
   );
 });
