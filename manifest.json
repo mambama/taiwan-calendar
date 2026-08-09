@@ -1,7 +1,7 @@
 {
-  "name": "台灣農民曆行事曆",
-  "short_name": "行事曆",
-  "description": "台灣農民曆、節日、事件與待辦一體的行事曆 App",
+  "name": "曼巴行事曆",
+  "short_name": "曼巴行事曆",
+  "description": "農民曆、節日、事件與待辦一體的行事曆 App",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#534AB7",
