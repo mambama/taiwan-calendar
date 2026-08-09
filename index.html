@@ -66,11 +66,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .yr-chip:active{background:#EEEDFE;border-color:#534AB7;color:#534AB7}
 
 /* ── 工具列 ── */
-.toolbar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.notif-pill{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:22px;border:1.5px solid var(--bd);font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;background:none;min-height:38px}
+.toolbar{display:flex;align-items:center;gap:5px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.toolbar::-webkit-scrollbar{display:none}
+.notif-pill{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:22px;border:1.5px solid var(--bd);font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;background:none;white-space:nowrap;flex-shrink:0}
 .notif-pill.on{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
 .notif-pill.off{border-color:#E24B4A;color:#A32D2D;background:#FCEBEB}
-.tb-btn{display:flex;align-items:center;gap:4px;padding:7px 12px;border:1.5px solid var(--bd);border-radius:22px;font-size:13px;font-weight:600;color:var(--tx2);background:none;cursor:pointer;white-space:nowrap;min-height:38px}
+.tb-btn{display:flex;align-items:center;gap:3px;padding:6px 10px;border:1.5px solid var(--bd);border-radius:22px;font-size:12px;font-weight:600;color:var(--tx2);background:none;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .tb-btn:active{background:var(--bg2)}
 .tb-btn.sync{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
 .save-toast{font-size:12px;font-weight:600;color:#1D9E75;opacity:0;transition:opacity .3s;margin-left:auto;flex-shrink:0}
@@ -234,6 +235,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
     <button class="nav-btn" id="prev">‹</button>
     <span class="month-title" id="month-label"></span>
     <button class="nav-btn" id="next">›</button>
+    <button class="nav-btn" id="theme-btn" title="深色/淺色模式" style="font-size:16px;border-radius:50%">🌙</button>
     <div class="spacer"></div>
     <button class="top-btn" id="today-btn">今天</button>
     <button class="top-btn" id="jump-btn">查詢 ▾</button>
@@ -269,9 +271,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
   <div class="toolbar">
     <button class="notif-pill" id="notif-btn">🔔 <span id="notif-label">開啟通知</span></button>
     <button class="tb-btn" id="update-hol-btn">↻ 更新節日</button>
-    <button class="tb-btn sync" id="sync-btn">⇅ 備份/還原</button>
-    <button class="tb-btn" id="test-notif-btn" title="測試通知">🧪 測試通知</button>
-    <button class="tb-btn" id="theme-btn" title="深色/淺色模式">🌙</button>
+    <button class="tb-btn sync" id="sync-btn">⇅ 備份</button>
+    <button class="tb-btn" id="test-notif-btn">🧪 測試</button>
     <span class="save-toast" id="save-toast">✓ 已儲存</span>
   </div>
 
@@ -1121,6 +1122,23 @@ loadStorage();renderTodos();renderEventPanel();
 loadHolidays(curYear,true);
 // 若已有通知權限，自動啟用背景推播
 if(notifPermission==='granted') setupPush();
+
+// 首次開啟 App，自動詢問通知權限
+try{
+  if(!localStorage.getItem('cal_visited')){
+    localStorage.setItem('cal_visited','1');
+    setTimeout(async()=>{
+      if('Notification' in window && Notification.permission==='default'){
+        const p=await Notification.requestPermission();
+        notifPermission=p;updateNotifUI();
+        if(p==='granted'){
+          showNotif('✅ 通知已開啟','曼巴行事曆提醒將準時通知您','welcome');
+          setupPush();
+        }
+      }
+    },1500);
+  }
+}catch(e){}
 </script>
 </body>
 </html>
