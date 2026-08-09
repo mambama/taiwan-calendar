@@ -308,7 +308,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
       <input type="file" id="import-input" accept=".json" style="display:none"/>
       <!-- Cloudflare Worker 網址設定 -->
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
-        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🌐 Cloudflare Worker 網址（背景通知）</div>
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🌐 Cloudflare Worker 網址（App 關閉也能收通知）</div>
+        <div id="worker-url-hint" style="font-size:11px;color:#A32D2D;margin-bottom:6px;display:none">⚠️ 尚未設定 Worker 網址，App 關閉時無法收到通知</div>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="worker-url-input" placeholder="https://tw-calendar-push.你的帳號.workers.dev"
             style="flex:1;font-size:12px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
@@ -364,7 +365,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 // ── Web Push 設定 ─────────────────────────────────────
 // 部署 Cloudflare Worker 後填入網址，或在「備份/還原」介面輸入
 let WORKER_URL = '';
-try{ WORKER_URL = localStorage.getItem('cal_worker_url') || 'https://tw-calendar-push.dwmmamba.workers.dev'; }catch(e){ WORKER_URL='https://tw-calendar-push.dwmmamba.workers.dev'; }
+try{ WORKER_URL = localStorage.getItem('cal_worker_url') || ''; }catch(e){}
 
 let pushSubscription = null;
 let userId = null;
@@ -663,12 +664,20 @@ function setEvtReminder(ev,dk,minsBefore,label,date){
   if(ms>0) scheduleWebPush(schedId,body,sendAt);
   ev.remindLabel=label;return true;
 }
-function setTodoReminder(t,minsFromNow,label){
+function setTodoReminder(t, minsFromNow, label){
   if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
   const nkey=`todo-${t.id}`;
   const ms=minsFromNow*60000;
+  const sendAt=Date.now()+ms;
+  // 本地通知（App 開著時）
   scheduleNotif(nkey,'待辦提醒',t.text,ms);
-  t.remindLabel=label;return true;
+  // Web Push（App 關閉時）
+  const schedId=`${nkey}-${sendAt}`;
+  cancelWebPush(schedId);
+  scheduleWebPush(schedId,`待辦：${t.text}`,sendAt);
+  t.remindLabel=label;
+  t._pushSchedId=schedId; // 儲存以便取消
+  return true;
 }
 
 // ── 事件面板 ──────────────────────────────────────────
@@ -892,7 +901,12 @@ function renderTodos(){
     main.querySelector('.todo-cb').addEventListener('click',()=>{todos=todos.map(x=>x.id===t.id?{...x,done:!x.done}:x);saveTodos();renderTodos();renderMonthList()});
     main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(isExp&&mode==='edit')?null:{id:t.id,mode:'edit'};renderTodos()});
     main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(isExp&&mode==='remind')?null:{id:t.id,mode:'remind'};renderTodos()});
-    main.querySelector('.ic-btn.del').addEventListener('click',()=>{todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList()});
+    main.querySelector('.ic-btn.del').addEventListener('click',()=>{
+      // 取消 Web Push 排程
+      if(t._pushSchedId) cancelWebPush(t._pushSchedId);
+      if(scheduledNotifs[`todo-${t.id}`]) clearTimeout(scheduledNotifs[`todo-${t.id}`]);
+      todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
+    });
     list.appendChild(item);
   });
 }
@@ -986,11 +1000,12 @@ document.getElementById('sync-btn').addEventListener('click',()=>{
   const open=b.style.display==='none';
   b.style.display=open?'block':'none';
   if(open){
-    // 顯示已儲存的 Worker URL
     const inp=document.getElementById('worker-url-input');
     if(inp) inp.value=WORKER_URL||'';
+    const hint=document.getElementById('worker-url-hint');
+    if(hint) hint.style.display=WORKER_URL?'none':'block';
     const st=document.getElementById('worker-url-status');
-    if(st) st.textContent=WORKER_URL?`✅ 已設定：${WORKER_URL}`:'尚未設定（設定後才能收到關閉 App 的通知）';
+    if(st) st.textContent=WORKER_URL?`✅ 已設定：${WORKER_URL}`:'';
   }
 });
 
