@@ -299,13 +299,23 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
   <div id="sync-box" style="display:none">
     <div class="sync-box">
       <div class="sync-box-title">⇅ 資料備份 / 跨裝置同步</div>
-      <div class="sync-box-body">匯出 JSON 後，在另一台裝置匯入即可手動同步。<br>自動同步需部署到網路並串接 Firebase 等雲端資料庫。</div>
+      <div class="sync-box-body">匯出 JSON 後，在另一台裝置匯入即可手動同步。</div>
       <div class="sync-actions">
         <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff">📤 匯出資料</button>
         <button onclick="document.getElementById('import-input').click()" style="background:none;border:1.5px solid #D97706;color:#92400E">📥 匯入資料</button>
         <button onclick="document.getElementById('sync-box').style.display='none'" style="background:none;border:1.5px solid var(--bd);color:var(--tx2)">關閉</button>
       </div>
       <input type="file" id="import-input" accept=".json" style="display:none"/>
+      <!-- Cloudflare Worker 網址設定 -->
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🌐 Cloudflare Worker 網址（背景通知）</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="worker-url-input" placeholder="https://tw-calendar-push.你的帳號.workers.dev"
+            style="flex:1;font-size:12px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
+          <button id="save-worker-url" style="font-size:12px;font-weight:700;padding:7px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap">儲存</button>
+        </div>
+        <div id="worker-url-status" style="font-size:11px;margin-top:5px;color:var(--tx3)"></div>
+      </div>
     </div>
   </div>
 
@@ -352,9 +362,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 
 <script>
 // ── Web Push 設定 ─────────────────────────────────────
-// 部署 Cloudflare Worker 後填入網址，例如：
-// 'https://tw-calendar-push.你的帳號.workers.dev'
-const WORKER_URL = 'https://tw-calendar-push.dwmmamba.workers.dev';   // ← 填入你的 Worker 網址
+// 部署 Cloudflare Worker 後填入網址，或在「備份/還原」介面輸入
+let WORKER_URL = '';
+try{ WORKER_URL = localStorage.getItem('cal_worker_url') || ''; }catch(e){}
 
 let pushSubscription = null;
 let userId = null;
@@ -949,7 +959,37 @@ document.getElementById('test-notif-btn').addEventListener('click',async()=>{
   }
 });
 document.getElementById('update-hol-btn').addEventListener('click',()=>{holidayData={};loadHolidays(curYear)});
-document.getElementById('sync-btn').addEventListener('click',()=>{const b=document.getElementById('sync-box');b.style.display=b.style.display==='none'?'block':'none'});
+document.getElementById('sync-btn').addEventListener('click',()=>{
+  const b=document.getElementById('sync-box');
+  const open=b.style.display==='none';
+  b.style.display=open?'block':'none';
+  if(open){
+    // 顯示已儲存的 Worker URL
+    const inp=document.getElementById('worker-url-input');
+    if(inp) inp.value=WORKER_URL||'';
+    const st=document.getElementById('worker-url-status');
+    if(st) st.textContent=WORKER_URL?`✅ 已設定：${WORKER_URL}`:'尚未設定（設定後才能收到關閉 App 的通知）';
+  }
+});
+
+document.getElementById('save-worker-url').addEventListener('click',async()=>{
+  const inp=document.getElementById('worker-url-input');
+  const url=(inp.value||'').trim().replace(/\/$/,'');
+  const st=document.getElementById('worker-url-status');
+  if(!url){ WORKER_URL='';try{localStorage.removeItem('cal_worker_url')}catch(e){}; st.textContent='已清除 Worker 網址';return; }
+  st.textContent='🔄 測試連線中...';
+  try{
+    const res=await fetch(`${url}/api/vapid-key`,{signal:AbortSignal.timeout(5000)});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    WORKER_URL=url;
+    try{localStorage.setItem('cal_worker_url',url)}catch(e){}
+    st.textContent='✅ 連線成功！背景通知已啟用';st.style.color='#0F6E56';
+    // 重新訂閱 Push
+    if(notifPermission==='granted') setupPush();
+  }catch(e){
+    st.textContent=`❌ 連線失敗：${e.message}，請確認網址正確`;st.style.color='#A32D2D';
+  }
+});
 document.getElementById('list-btn').addEventListener('click',()=>toggleList());
 document.getElementById('prev').addEventListener('click',()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--}loadHolidays(curYear,true);renderCalendar();if(showingList)renderMonthList()});
 document.getElementById('next').addEventListener('click',()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++}loadHolidays(curYear,true);renderCalendar();if(showingList)renderMonthList()});
@@ -986,20 +1026,23 @@ document.getElementById('install-btn').addEventListener('click',async()=>{if(!de
 document.getElementById('install-dismiss').addEventListener('click',()=>{document.getElementById('install-banner').style.display='none'});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 
-// ── 通知輔助（iOS/Android 相容）────────────────────────
-// new Notification() 在 iPhone Safari 無效，必須用 SW.showNotification()
+// ── 通知輔助（跨平台相容）────────────────────────────
 async function showNotif(title, body, tag){
-  try{
-    if('serviceWorker' in navigator){
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title,{
-        body, icon:'/icon-192.png', badge:'/icon-192.png',
-        tag: tag||'cal', vibrate:[200,100,200], requireInteraction:false
-      });
-    } else {
-      new Notification(title,{body});
-    }
-  }catch(e){ console.warn('通知失敗:',e.message); }
+  if(notifPermission!=='granted') return;
+  const opts={body:body||'',icon:'./icon-192.png',badge:'./icon-192.png',tag:tag||'cal',requireInteraction:false};
+  // 先嘗試 Service Worker（iOS PWA 必須用這個）
+  if('serviceWorker' in navigator){
+    try{
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW timeout')),2000))
+      ]);
+      await reg.showNotification(title, opts);
+      return;
+    }catch(e){ console.warn('SW通知失敗，改用直接通知:', e.message); }
+  }
+  // 桌機備用方案
+  try{ new Notification(title, opts); }catch(e){ console.error('通知失敗:', e.message); }
 }
 
 function scheduleNotif(nkey, title, body, ms){
