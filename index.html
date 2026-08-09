@@ -380,31 +380,36 @@ function urlBase64ToUint8Array(b64) {
 }
 
 async function setupPush() {
-  if (!WORKER_URL || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!WORKER_URL) { console.warn('WORKER_URL 未設定'); return; }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { console.warn('不支援 Web Push'); return; }
   try {
     const reg = await navigator.serviceWorker.ready;
     const res = await fetch(`${WORKER_URL}/api/vapid-key`);
-    if (!res.ok) return;
+    if (!res.ok) { console.error('取得 VAPID 公鑰失敗', res.status); return; }
     const { publicKey } = await res.json();
+    // 每次都重新訂閱，確保訂閱最新
     pushSubscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
-    await fetch(`${WORKER_URL}/api/subscribe`, {
+    const subRes = await fetch(`${WORKER_URL}/api/subscribe`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ userId, subscription: pushSubscription.toJSON() })
     });
-    console.log('✅ Web Push 背景通知已啟用');
+    const subData = await subRes.json();
+    console.log('✅ Web Push 訂閱成功', subData);
   } catch(e) { console.warn('Web Push 設定失敗:', e.message); }
 }
 
 async function scheduleWebPush(scheduleId, body, sendAt) {
   if (!WORKER_URL || !userId) return;
   try {
-    await fetch(`${WORKER_URL}/api/schedule`, {
+    const res = await fetch(`${WORKER_URL}/api/schedule`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, scheduleId, title: '行事曆提醒', body, sendAt })
+      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt })
     });
+    const data = await res.json();
+    console.log(`📅 排程推播 [${scheduleId}]`, data, '時間:', new Date(sendAt).toLocaleString('zh-TW'));
   } catch(e) { console.warn('Web Push 排程失敗:', e.message); }
 }
 
@@ -417,6 +422,29 @@ async function cancelWebPush(scheduleId) {
     });
   } catch(e) {}
 }
+
+// 透過 Cloudflare 立即發送測試推播
+async function testWebPush() {
+  if (!WORKER_URL) { alert('請先在「⇅ 備份/還原」設定 Worker 網址'); return; }
+  const btn = document.getElementById('test-notif-btn');
+  const orig = btn.textContent;
+  btn.textContent = '🔄 發送中…'; btn.disabled = true;
+  try {
+    await setupPush(); // 確保訂閱最新
+    const res = await fetch(`${WORKER_URL}/api/test-push`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('✅ Cloudflare 已發出推播！\n\n請切換到其他 App 或鎖定螢幕，幾秒後看看有沒有通知跳出來。');
+    } else {
+      alert('❌ 推播失敗：' + (data.error || '未知錯誤') + '\n\n請確認：\n1. 已點「🔔 開啟通知」授權\n2. iPhone 需在主畫面 PWA 模式下開啟');
+    }
+  } catch(e) { alert('連線失敗：' + e.message + '\n\n請確認 Worker 網址正確'); }
+  btn.textContent = orig; btn.disabled = false;
+}
+
 
 const today=new Date();
 let curYear=today.getFullYear(),curMonth=today.getMonth();
@@ -940,23 +968,17 @@ document.getElementById('notif-btn').addEventListener('click',async()=>{
   else if(p==='denied'){alert('通知被封鎖了。\n請到瀏覽器網址列旁的🔒圖示 → 通知 → 允許');}
 });
 
-// 測試通知按鈕 — 立即跳出一則測試通知
 document.getElementById('test-notif-btn').addEventListener('click',async()=>{
+  // 先測本地通知
   if(notifPermission!=='granted'){
     const p=await Notification.requestPermission();
     notifPermission=p;updateNotifUI();
-    if(p!=='granted'){
-      alert('⚠️ 通知權限未開啟\n\n請先點「🔔 開啟通知」按鈕授權。\n\n注意：\n• 必須在 GitHub Pages 網址下測試\n• 不能在 Claude 聊天室內測試（iframe 限制）');
-      return;
-    }
+    if(p!=='granted'){ alert('⚠️ 通知權限未開啟，請先點「🔔 開啟通知」');return; }
   }
-  try{
-    await showNotif('🧪 測試通知','曼巴行事曆通知正常運作！','test-'+Date.now());
-    // 顯示說明框
-    document.getElementById('notif-info-box').style.display='block';
-  }catch(e){
-    alert('通知發送失敗：'+e.message+'\n\n請確認你是在 GitHub Pages 上測試，不是在 Claude 聊天室。');
-  }
+  // 發送本地通知（驗證瀏覽器通知是否正常）
+  await showNotif('🧪 本地通知測試','這是瀏覽器通知（App 開著時）','local-test');
+  // 同時透過 Cloudflare 發送背景推播
+  setTimeout(()=>testWebPush(), 1000);
 });
 document.getElementById('update-hol-btn').addEventListener('click',()=>{holidayData={};loadHolidays(curYear)});
 document.getElementById('sync-btn').addEventListener('click',()=>{
