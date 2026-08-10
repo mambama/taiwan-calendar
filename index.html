@@ -225,6 +225,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 </head>
 <body>
 <div class="app">
+  <!-- 首次通知說明視窗 -->
+  <div id="notif-dialog" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:24px">
+    <div style="background:var(--bg);border-radius:18px;padding:24px 20px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+      <div style="font-size:40px;text-align:center;margin-bottom:12px">🔔</div>
+      <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:10px;color:var(--tx)">開啟通知提醒</div>
+      <div style="font-size:13px;color:var(--tx2);line-height:1.7;text-align:center;margin-bottom:20px">
+        開啟後，事件和待辦事項到期時<br>會自動提醒你，不會錯過任何行程。
+      </div>
+      <button id="notif-dialog-allow" style="width:100%;padding:13px;border:none;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">允許通知</button>
+      <button id="notif-dialog-deny" style="width:100%;padding:12px;border:1.5px solid var(--bd);border-radius:12px;background:none;color:var(--tx2);font-size:14px;font-weight:600;cursor:pointer">暫時不要</button>
+    </div>
+  </div>
+
   <div id="install-banner">
     <span style="flex:1">📱 加到主畫面，享受 App 體驗！</span>
     <button id="install-btn">安裝</button>
@@ -312,7 +325,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
         <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🌐 Cloudflare Worker 網址（App 關閉也能收通知）</div>
         <div id="worker-url-hint" style="font-size:11px;color:#A32D2D;margin-bottom:6px;display:none">⚠️ 尚未設定 Worker 網址，App 關閉時無法收到通知</div>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="worker-url-input" placeholder="https://tw-calendar-push.你的帳號.workers.dev"
+          <input type="text" id="worker-url-input" placeholder=""
             style="flex:1;font-size:12px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
           <button id="save-worker-url" style="font-size:12px;font-weight:700;padding:7px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap">儲存</button>
         </div>
@@ -975,13 +988,6 @@ function updateNotifUI(){
   else if(notifPermission==='denied'){btn.className='notif-pill off';lbl.textContent='通知被封鎖'}
   else{btn.className='notif-pill';lbl.textContent='開啟通知'}
 }
-document.getElementById('notif-btn').addEventListener('click',async()=>{
-  if(notifPermission==='denied'){alert('通知已被封鎖，請至瀏覽器設定手動允許。');return}
-  if(!('Notification' in window)){alert('此環境不支援通知功能。');return}
-  const p=await Notification.requestPermission();notifPermission=p;updateNotifUI();
-  if(p==='granted'){showNotif('✅ 通知已開啟','事件與待辦提醒將準時通知您','test');setupPush();}
-  else if(p==='denied'){alert('通知被封鎖了。\n請到瀏覽器網址列旁的🔒圖示 → 通知 → 允許');}
-});
 
 document.getElementById('test-notif-btn').addEventListener('click',async()=>{
   // 先測本地通知
@@ -1120,23 +1126,55 @@ if('Notification' in window)notifPermission=Notification.permission;
 updateNotifUI();
 loadStorage();renderTodos();renderEventPanel();
 loadHolidays(curYear,true);
-// 若已有通知權限，自動啟用背景推播
 if(notifPermission==='granted') setupPush();
 
-// 首次開啟 App，自動詢問通知權限
+// 通知說明視窗邏輯
+async function requestNotifPermission(){
+  if(!('Notification' in window)){alert('此裝置不支援通知功能');return}
+  if(notifPermission==='denied'){
+    // iOS 解除封鎖說明
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+    if(isIOS){
+      alert('通知已被封鎖。\n\n請照以下步驟開啟：\n①「設定」→ 往下找到「曼巴行事曆」\n② 點「通知」→ 開啟「允許通知」');
+    }else{
+      alert('通知已被封鎖。\n\n請點瀏覽器網址列旁的🔒或ⓘ圖示\n→ 通知 → 改為「允許」\n然後重新整理頁面');
+    }
+    return;
+  }
+  const p=await Notification.requestPermission();
+  notifPermission=p;updateNotifUI();
+  if(p==='granted'){
+    showNotif('✅ 通知已開啟','曼巴行事曆提醒將準時通知您','welcome');
+    setupPush();
+  }else if(p==='denied'){
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+    if(isIOS) alert('通知被封鎖了。\n\n請到「設定」→「曼巴行事曆」→「通知」→ 開啟允許通知');
+    else alert('通知被封鎖了。\n請到瀏覽器設定手動允許。');
+  }
+}
+
+// 🔔 按鈕直接呼叫
+document.getElementById('notif-btn').addEventListener('click', requestNotifPermission);
+
+// 首次開啟：顯示自訂說明視窗，讓使用者看清楚再決定
+const notifDialog=document.getElementById('notif-dialog');
+document.getElementById('notif-dialog-allow').addEventListener('click',async()=>{
+  notifDialog.style.display='none';
+  await requestNotifPermission();
+});
+document.getElementById('notif-dialog-deny').addEventListener('click',()=>{
+  notifDialog.style.display='none';
+  try{localStorage.setItem('cal_notif_asked','1')}catch(e){}
+});
+
 try{
-  if(!localStorage.getItem('cal_visited')){
-    localStorage.setItem('cal_visited','1');
-    setTimeout(async()=>{
-      if('Notification' in window && Notification.permission==='default'){
-        const p=await Notification.requestPermission();
-        notifPermission=p;updateNotifUI();
-        if(p==='granted'){
-          showNotif('✅ 通知已開啟','曼巴行事曆提醒將準時通知您','welcome');
-          setupPush();
-        }
-      }
-    },1500);
+  const alreadyAsked=localStorage.getItem('cal_notif_asked');
+  const firstVisit=!localStorage.getItem('cal_visited');
+  if(firstVisit) localStorage.setItem('cal_visited','1');
+  // 若通知尚未授權且還沒問過，1.5秒後顯示說明視窗
+  if(!alreadyAsked && notifPermission==='default'){
+    localStorage.setItem('cal_notif_asked','1');
+    setTimeout(()=>{ notifDialog.style.display='flex'; }, 1500);
   }
 }catch(e){}
 </script>
