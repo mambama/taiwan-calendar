@@ -313,7 +313,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
   <div id="sync-box" style="display:none">
     <div class="sync-box">
       <div class="sync-box-title">⇅ 資料備份 / 跨裝置同步</div>
-      <div class="sync-box-body">匯出 JSON 後，在另一台裝置匯入即可手動同步。</div>
+      <div class="sync-box-body">匯出 JSON 後，在另一台裝置匯入即可手動同步。<br>設定 Worker 網址後，新增/修改資料會<b>自動同步</b>到所有裝置。</div>
+      <div id="sync-cloud-status" style="font-size:11px;padding:5px 0;color:var(--tx3)"></div>
       <div class="sync-actions">
         <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff">📤 匯出資料</button>
         <button onclick="document.getElementById('import-input').click()" style="background:none;border:1.5px solid #D97706;color:#92400E">📥 匯入資料</button>
@@ -380,6 +381,54 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 // 部署 Cloudflare Worker 後填入網址，或在「備份/還原」介面輸入
 let WORKER_URL = '';
 try{ WORKER_URL = localStorage.getItem('cal_worker_url') || ''; }catch(e){}
+
+// 雲端同步時間戳（用來判斷誰的資料比較新）
+let cloudUpdatedAt = 0;
+try{ cloudUpdatedAt = parseInt(localStorage.getItem('cal_updated_at')) || 0; }catch(e){}
+
+// 推送資料到雲端
+async function syncToCloud(){
+  if(!WORKER_URL || !userId) return;
+  const updatedAt = Date.now();
+  cloudUpdatedAt = updatedAt;
+  try{ localStorage.setItem('cal_updated_at', String(updatedAt)); }catch(e){}
+  try{
+    await fetch(`${WORKER_URL}/api/data/push`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ userId, events: localEvents, todos, updatedAt })
+    });
+    console.log('☁️ 資料已同步到雲端');
+  }catch(e){ console.warn('雲端同步失敗:', e.message); }
+}
+
+// 從雲端拉取資料（App 開啟時）
+async function syncFromCloud(){
+  if(!WORKER_URL || !userId) return;
+  try{
+    const res = await fetch(`${WORKER_URL}/api/data/pull`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ userId })
+    });
+    const { ok, data } = await res.json();
+    if(!ok || !data) return;
+    // 雲端資料比本機新才更新
+    if(data.updatedAt > cloudUpdatedAt){
+      localEvents = data.events || {};
+      todos = data.todos || [];
+      nextId = todos.reduce((m,t)=>Math.max(m,t.id), 0) + 1;
+      cloudUpdatedAt = data.updatedAt;
+      try{ localStorage.setItem('cal_events', JSON.stringify(localEvents)); }catch(e){}
+      try{ localStorage.setItem('cal_todos', JSON.stringify(todos)); }catch(e){}
+      try{ localStorage.setItem('cal_updated_at', String(data.updatedAt)); }catch(e){}
+      // 重新渲染
+      renderCalendar(); renderEventPanel(); renderTodos(); renderMonthList();
+      showToast();
+      console.log('✅ 雲端同步完成，資料已更新');
+    } else {
+      console.log('✅ 本機資料已是最新，無需更新');
+    }
+  }catch(e){ console.warn('從雲端拉取失敗:', e.message); }
+}
 
 let pushSubscription = null;
 let userId = null;
@@ -471,8 +520,8 @@ const dKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${St
 const yyyymmdd=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
 function showToast(){const t=document.getElementById('save-toast');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1500)}
-function saveEvents(){try{localStorage.setItem('cal_events',JSON.stringify(localEvents));showToast()}catch(e){}}
-function saveTodos(){try{localStorage.setItem('cal_todos',JSON.stringify(todos));showToast()}catch(e){}}
+function saveEvents(){try{localStorage.setItem('cal_events',JSON.stringify(localEvents));showToast()}catch(e){} syncToCloud();}
+function saveTodos(){try{localStorage.setItem('cal_todos',JSON.stringify(todos));showToast()}catch(e){} syncToCloud();}
 function loadStorage(){
   try{const r=localStorage.getItem('cal_events');if(r)localEvents=JSON.parse(r)}catch(e){}
   try{const r=localStorage.getItem('cal_todos');if(r){todos=JSON.parse(r);nextId=todos.reduce((m,t)=>Math.max(m,t.id),0)+1}}catch(e){}
@@ -1013,6 +1062,13 @@ document.getElementById('sync-btn').addEventListener('click',()=>{
     if(hint) hint.style.display=WORKER_URL?'none':'block';
     const st=document.getElementById('worker-url-status');
     if(st) st.textContent=WORKER_URL?`✅ 已設定：${WORKER_URL}`:'';
+    // 顯示雲端同步狀態
+    const cst=document.getElementById('sync-cloud-status');
+    if(cst){
+      if(!WORKER_URL) cst.textContent='';
+      else if(cloudUpdatedAt) cst.textContent=`☁️ 上次同步：${new Date(cloudUpdatedAt).toLocaleString('zh-TW')}`;
+      else cst.textContent='☁️ 尚未同步';
+    }
   }
 });
 
@@ -1127,6 +1183,8 @@ updateNotifUI();
 loadStorage();renderTodos();renderEventPanel();
 loadHolidays(curYear,true);
 if(notifPermission==='granted') setupPush();
+// 開啟 App 時自動從雲端拉取最新資料
+syncFromCloud();
 
 // 通知說明視窗邏輯
 async function requestNotifPermission(){
