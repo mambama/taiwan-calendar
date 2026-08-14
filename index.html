@@ -131,7 +131,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 /* ── Tabs ── */
 .tab-bar{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:10px 0;gap:3px}
 .tab{flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:700;color:var(--tx2);cursor:pointer}
-.tab.active{background:var(--bg);color:var(--tx);border:1px solid var(--bd2)}
+.tab.active{background:#534AB7;color:#fff;border:1px solid #534AB7}
 .panel{display:none}.panel.active{display:block}
 .sel-label{font-size:15px;font-weight:700;margin-bottom:8px}
 
@@ -199,24 +199,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .lt-btn{flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:700;color:var(--tx2);cursor:pointer;border:none;background:none}
 .lt-btn.active{background:var(--bg);color:var(--tx);border:1px solid var(--bd2)}
 .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.list-title{font-size:15px;font-weight:700}
+.list-title{font-size:16px;font-weight:700}
 .list-count{font-size:12px;font-weight:600;color:var(--tx3);background:var(--bg2);padding:3px 10px;border-radius:20px}
 .list-group{margin-bottom:12px}
 .list-date-label{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.list-date-text{font-size:13px;font-weight:700;color:var(--tx2)}
+.list-date-text{font-size:14px;font-weight:700;color:var(--tx2)}
 .list-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px}
 .list-badge.hol{color:#A32D2D;background:#FFF0F0}
 .list-badge.tod{color:#1D4ED8;background:#EFF6FF}
 .list-evt{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px;cursor:pointer}
 .list-evt:active{background:var(--bd)}
 .list-evt-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.list-evt-text{font-size:13px;font-weight:600;flex:1}
+.list-evt-text{font-size:14px;font-weight:600;flex:1}
 .list-evt-remind{font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;padding:2px 7px;border-radius:10px;white-space:nowrap}
 .list-evt-arrow{font-size:14px;color:var(--tx3);flex-shrink:0}
 .list-todo{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px}
 .list-todo-cb{width:20px;height:20px;border:2px solid var(--bd);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:var(--bg)}
 .list-todo-cb.done{background:#1D9E75;border-color:#1D9E75;color:#fff}
-.list-todo-text{font-size:13px;font-weight:600;flex:1}
+.list-todo-text{font-size:14px;font-weight:600;flex:1}
 .list-todo-text.done{text-decoration:line-through;color:var(--tx3)}
 .list-todo-remind{font-size:11px;font-weight:600;color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A;padding:2px 7px;border-radius:10px;white-space:nowrap}
 .list-empty{text-align:center;padding:24px 0;font-size:13px;font-weight:500;color:var(--tx3)}
@@ -225,18 +225,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 </head>
 <body>
 <div class="app">
-  <!-- 首次通知說明視窗 -->
-  <div id="notif-dialog" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:24px">
-    <div style="background:var(--bg);border-radius:18px;padding:24px 20px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-      <div style="font-size:40px;text-align:center;margin-bottom:12px">🔔</div>
-      <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:10px;color:var(--tx)">開啟通知提醒</div>
-      <div style="font-size:13px;color:var(--tx2);line-height:1.7;text-align:center;margin-bottom:20px">
-        開啟後，事件和待辦事項到期時<br>會自動提醒你，不會錯過任何行程。
-      </div>
-      <button id="notif-dialog-allow" style="width:100%;padding:13px;border:none;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">允許通知</button>
-      <button id="notif-dialog-deny" style="width:100%;padding:12px;border:1.5px solid var(--bd);border-radius:12px;background:none;color:var(--tx2);font-size:14px;font-weight:600;cursor:pointer">暫時不要</button>
-    </div>
-  </div>
+  <!-- 通知說明視窗已移除，改用原生系統視窗 -->
 
   <div id="install-banner">
     <span style="flex:1">📱 加到主畫面，享受 App 體驗！</span>
@@ -648,31 +637,40 @@ function calcSendAt(label, date, evTime){
   return base.getTime()-n*um[u];
 }
 
-// 同步後重新排程所有未來的提醒
+// 同步後重新排程所有未來的提醒（不立即觸發已過期提醒）
 async function rescheduleAllReminders(){
   if(notifPermission!=='granted') return;
   const now=Date.now();
+  const minFuture=30*1000; // 至少 30 秒後才排程，避免誤觸
   // 事件提醒
   Object.entries(localEvents).forEach(([dk,evts])=>{
     const date=parseDKey(dk);
     evts.forEach(ev=>{
       if(!ev.remindLabel) return;
       const sendAt=calcSendAt(ev.remindLabel,date,ev.time);
-      if(!sendAt||sendAt<=now) return;
+      if(!sendAt||sendAt<=now+minFuture) return; // 只排程未來事件
       const nkey=`evt-${dk}-${ev.title}`;
       const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
-      scheduleNotif(nkey,'曼巴行事曆提醒',body,sendAt-now);
-      scheduleWebPush(`${nkey}-${sendAt}`,body,sendAt);
-      console.log(`🔔 重新排程事件提醒: ${ev.title} → ${new Date(sendAt).toLocaleString('zh-TW')}`);
+      const ms=sendAt-now;
+      // 只設定計時器，不立即觸發
+      if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
+      scheduledNotifs[nkey]=setTimeout(()=>{showNotif('曼巴行事曆提醒',body,nkey);delete scheduledNotifs[nkey]},ms);
+      // Web Push（先取消舊的再建新的）
+      const schedId=`${nkey}-${sendAt}`;
+      cancelWebPush(schedId);
+      scheduleWebPush(schedId,body,sendAt);
     });
   });
-  // 待辦提醒（存有絕對時間 remindAt）
+  // 待辦提醒
   todos.forEach(t=>{
-    if(!t.remindAt||t.remindAt<=now) return;
+    if(!t.remindAt||t.remindAt<=now+minFuture) return;
     const nkey=`todo-${t.id}`;
-    scheduleNotif(nkey,'待辦提醒',t.text,t.remindAt-now);
-    scheduleWebPush(`${nkey}-${t.remindAt}`,`待辦：${t.text}`,t.remindAt);
-    console.log(`🔔 重新排程待辦提醒: ${t.text} → ${new Date(t.remindAt).toLocaleString('zh-TW')}`);
+    const ms=t.remindAt-now;
+    if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
+    scheduledNotifs[nkey]=setTimeout(()=>{showNotif('待辦提醒',t.text,nkey);delete scheduledNotifs[nkey]},ms);
+    const schedId=`${nkey}-${t.remindAt}`;
+    cancelWebPush(schedId);
+    scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt);
   });
 }
 
@@ -1332,25 +1330,13 @@ async function requestNotifPermission(){
 // 🔔 按鈕直接呼叫
 document.getElementById('notif-btn').addEventListener('click', requestNotifPermission);
 
-// 首次開啟：顯示自訂說明視窗，讓使用者看清楚再決定
-const notifDialog=document.getElementById('notif-dialog');
-document.getElementById('notif-dialog-allow').addEventListener('click',async()=>{
-  notifDialog.style.display='none';
-  await requestNotifPermission();
-});
-document.getElementById('notif-dialog-deny').addEventListener('click',()=>{
-  notifDialog.style.display='none';
-  try{localStorage.setItem('cal_notif_asked','1')}catch(e){}
-});
-
+// 首次開啟：直接跳原生通知授權視窗（不顯示自訂說明框）
 try{
   const alreadyAsked=localStorage.getItem('cal_notif_asked');
-  const firstVisit=!localStorage.getItem('cal_visited');
-  if(firstVisit) localStorage.setItem('cal_visited','1');
-  // 若通知尚未授權且還沒問過，1.5秒後顯示說明視窗
+  if(!localStorage.getItem('cal_visited')) localStorage.setItem('cal_visited','1');
   if(!alreadyAsked && notifPermission==='default'){
     localStorage.setItem('cal_notif_asked','1');
-    setTimeout(()=>{ notifDialog.style.display='flex'; }, 1500);
+    setTimeout(()=>{ requestNotifPermission(); }, 800);
   }
 }catch(e){}
 </script>
