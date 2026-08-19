@@ -197,7 +197,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 /* ── 清單 ── */
 .list-toggle{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin-bottom:12px;gap:3px}
 .lt-btn{flex:1;text-align:center;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:700;color:var(--tx2);cursor:pointer;border:none;background:none}
-.lt-btn.active{background:var(--bg);color:var(--tx);border:1px solid var(--bd2)}
+.lt-btn.active{background:#534AB7;color:#fff;border:1px solid #534AB7}
 .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .list-title{font-size:16px;font-weight:700}
 .list-count{font-size:12px;font-weight:600;color:var(--tx3);background:var(--bg2);padding:3px 10px;border-radius:20px}
@@ -225,7 +225,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 </head>
 <body>
 <div class="app">
-  <!-- 通知說明視窗已移除，改用原生系統視窗 -->
+  <!-- 首次通知說明視窗 -->
+  <div id="notif-dialog" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:24px">
+    <div style="background:var(--bg);border-radius:18px;padding:24px 20px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+      <div style="font-size:40px;text-align:center;margin-bottom:10px">🔔</div>
+      <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;color:var(--tx)">開啟通知提醒</div>
+      <div style="font-size:13px;color:var(--tx2);line-height:1.7;text-align:center;margin-bottom:20px">開啟後，事件和待辦到期時<br>會自動提醒你，不會錯過行程。</div>
+      <button id="notif-dialog-allow" style="width:100%;padding:13px;border:none;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">開啟通知</button>
+      <button id="notif-dialog-skip" style="width:100%;padding:10px;border:1.5px solid var(--bd);border-radius:12px;background:none;color:var(--tx2);font-size:13px;cursor:pointer">暫時不要</button>
+    </div>
+  </div>
 
   <div id="install-banner">
     <span style="flex:1">📱 加到主畫面，享受 App 體驗！</span>
@@ -313,7 +322,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
           <button id="save-sync-code" style="font-size:12px;font-weight:700;padding:8px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap">設定</button>
         </div>
         <div id="sync-code-status" style="font-size:11px;color:var(--tx3)"></div>
-        <button id="manual-sync-btn" style="width:100%;margin-top:8px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#1D9E75;color:#fff;cursor:pointer">☁️ 立即同步</button>
+        <button id="manual-sync-btn" style="width:100%;margin-top:8px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#1D9E75;color:#fff;cursor:pointer">☁️ 立即拉取（從雲端更新到本機）</button>
+        <button id="push-data-btn" style="width:100%;margin-top:6px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer">⬆️ 推送資料（上傳本機到雲端）</button>
         <div id="sync-cloud-status" style="font-size:11px;padding:5px 0 0;color:var(--tx3);text-align:center"></div>
       </div>
 
@@ -386,6 +396,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 // 部署 Cloudflare Worker 後填入網址，或在「備份/還原」介面輸入
 let WORKER_URL = '';
 try{ WORKER_URL = localStorage.getItem('cal_worker_url') || ''; }catch(e){}
+
+// 每個 session 只執行一次 rescheduleAllReminders，避免重複通知
+let remindersRescheduled = false;
 
 // 同步代碼：兩台裝置輸入相同代碼才能共享資料
 let syncCode = '';
@@ -637,39 +650,38 @@ function calcSendAt(label, date, evTime){
   return base.getTime()-n*um[u];
 }
 
-// 同步後重新排程所有未來的提醒（不立即觸發已過期提醒）
+// 同步後重新排程所有未來的提醒（每個 session 只跑一次）
 async function rescheduleAllReminders(){
   if(notifPermission!=='granted') return;
+  if(remindersRescheduled) return; // 同一 session 只跑一次
+  remindersRescheduled=true;
   const now=Date.now();
-  const minFuture=30*1000; // 至少 30 秒後才排程，避免誤觸
-  // 事件提醒
+  const minFuture=60*1000; // 至少 1 分鐘後才排程
   Object.entries(localEvents).forEach(([dk,evts])=>{
     const date=parseDKey(dk);
     evts.forEach(ev=>{
       if(!ev.remindLabel) return;
       const sendAt=calcSendAt(ev.remindLabel,date,ev.time);
-      if(!sendAt||sendAt<=now+minFuture) return; // 只排程未來事件
+      if(!sendAt||sendAt<=now+minFuture) return;
       const nkey=`evt-${dk}-${ev.title}`;
       const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
       const ms=sendAt-now;
-      // 只設定計時器，不立即觸發
       if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
       scheduledNotifs[nkey]=setTimeout(()=>{showNotif('曼巴行事曆提醒',body,nkey);delete scheduledNotifs[nkey]},ms);
-      // Web Push（先取消舊的再建新的）
-      const schedId=`${nkey}-${sendAt}`;
-      cancelWebPush(schedId);
+      // 裝置專屬 scheduleId（含 userId 前綴避免跨裝置覆蓋）
+      const devPrefix=userId?userId.slice(0,8):'dev';
+      const schedId=`${devPrefix}-${nkey}-${sendAt}`;
       scheduleWebPush(schedId,body,sendAt);
     });
   });
-  // 待辦提醒
   todos.forEach(t=>{
     if(!t.remindAt||t.remindAt<=now+minFuture) return;
     const nkey=`todo-${t.id}`;
     const ms=t.remindAt-now;
     if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
     scheduledNotifs[nkey]=setTimeout(()=>{showNotif('待辦提醒',t.text,nkey);delete scheduledNotifs[nkey]},ms);
-    const schedId=`${nkey}-${t.remindAt}`;
-    cancelWebPush(schedId);
+    const devPrefix=userId?userId.slice(0,8):'dev';
+    const schedId=`${devPrefix}-${nkey}-${t.remindAt}`;
     scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt);
   });
 }
@@ -1170,16 +1182,27 @@ document.getElementById('save-sync-code').addEventListener('click',()=>{
   if(WORKER_URL) syncToCloud();
 });
 
-// 立即同步按鈕
+// 立即同步（拉取）
 document.getElementById('manual-sync-btn').addEventListener('click',async()=>{
   if(!WORKER_URL){alert('請先設定 Cloudflare Worker 網址');return}
   if(!syncCode){alert('請先設定同步代碼');return}
   const btn=document.getElementById('manual-sync-btn');
-  btn.textContent='🔄 同步中…';btn.disabled=true;
+  btn.textContent='🔄 拉取中…';btn.disabled=true;
   await syncFromCloud(true);
-  btn.textContent='☁️ 立即同步';btn.disabled=false;
+  btn.textContent='☁️ 立即拉取（從雲端更新到本機）';btn.disabled=false;
   const cst=document.getElementById('sync-cloud-status');
   if(cst&&cloudUpdatedAt) cst.textContent=`☁️ 上次同步：${new Date(cloudUpdatedAt).toLocaleString('zh-TW')}`;
+});
+
+// 推送資料（上傳）
+document.getElementById('push-data-btn').addEventListener('click',async()=>{
+  if(!WORKER_URL){alert('請先設定 Cloudflare Worker 網址');return}
+  if(!syncCode){alert('請先設定同步代碼');return}
+  const btn=document.getElementById('push-data-btn');
+  btn.textContent='🔄 推送中…';btn.disabled=true;
+  await syncToCloud();
+  btn.textContent='⬆️ 推送資料（上傳本機到雲端）';btn.disabled=false;
+  alert('✅ 資料已推送到雲端！\n另一台裝置按「立即拉取」即可同步。');
 });
 
 document.getElementById('save-worker-url').addEventListener('click',async()=>{
@@ -1327,16 +1350,26 @@ async function requestNotifPermission(){
   }
 }
 
-// 🔔 按鈕直接呼叫
 document.getElementById('notif-btn').addEventListener('click', requestNotifPermission);
 
-// 首次開啟：直接跳原生通知授權視窗（不顯示自訂說明框）
+// 通知說明視窗
+const notifDialog=document.getElementById('notif-dialog');
+document.getElementById('notif-dialog-allow').addEventListener('click',async()=>{
+  notifDialog.style.display='none';
+  await requestNotifPermission();
+});
+document.getElementById('notif-dialog-skip').addEventListener('click',()=>{
+  notifDialog.style.display='none';
+  try{localStorage.setItem('cal_notif_asked','1')}catch(e){}
+});
+
+// 首次開啟：顯示自訂說明視窗，讓使用者主動選擇
 try{
   const alreadyAsked=localStorage.getItem('cal_notif_asked');
   if(!localStorage.getItem('cal_visited')) localStorage.setItem('cal_visited','1');
   if(!alreadyAsked && notifPermission==='default'){
     localStorage.setItem('cal_notif_asked','1');
-    setTimeout(()=>{ requestNotifPermission(); }, 800);
+    setTimeout(()=>{ notifDialog.style.display='flex'; }, 1000);
   }
 }catch(e){}
 </script>
