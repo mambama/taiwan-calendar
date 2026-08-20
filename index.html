@@ -455,6 +455,7 @@ async function syncFromCloud(manual=false){
       try{ localStorage.setItem('cal_updated_at', String(data.updatedAt)); }catch(e){}
       renderCalendar(); renderEventPanel(); renderTodos(); renderMonthList();
       showToast();
+      remindersRescheduled = false; // 重置旗標，讓手機可重新排程新資料的提醒
       rescheduleAllReminders();
       if(manual) alert(`✅ 同步完成！\n上次更新：${new Date(data.updatedAt).toLocaleString('zh-TW')}`);
       else console.log('✅ 雲端同步完成');
@@ -550,7 +551,7 @@ async function testWebPush() {
 
 const today=new Date();
 let curYear=today.getFullYear(),curMonth=today.getMonth();
-let selectedDate=null,holidayData={},localEvents={},todos=[],nextId=1;
+let selectedDate=today,holidayData={},localEvents={},todos=[],nextId=1;
 let notifPermission='default',scheduledNotifs={};
 let expandedEvt=null,expandedTodo=null,showingList=false,listMode='events';
 
@@ -1281,6 +1282,8 @@ async function showNotif(title, body, tag){
 function scheduleNotif(nkey, title, body, ms){
   if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
   if(ms <= 0){ showNotif(title, body, nkey); return; }
+  // JS setTimeout 最大值約 24.8 天（2^31-1 ms），超過會立刻觸發，所以不排程
+  if(ms > 2147483647) return;
   scheduledNotifs[nkey] = setTimeout(()=>{
     showNotif(title, body, nkey);
     delete scheduledNotifs[nkey];
@@ -1313,7 +1316,7 @@ document.getElementById('theme-btn').addEventListener('click', toggleTheme);
 
 if('Notification' in window)notifPermission=Notification.permission;
 updateNotifUI();
-loadStorage();renderTodos();renderEventPanel();
+loadStorage();renderCalendar();renderTodos();renderEventPanel();
 loadHolidays(curYear,true);
 if(notifPermission==='granted'){
   setupPush();
