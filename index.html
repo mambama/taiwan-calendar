@@ -203,20 +203,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .list-count{font-size:12px;font-weight:600;color:var(--tx3);background:var(--bg2);padding:3px 10px;border-radius:20px}
 .list-group{margin-bottom:12px}
 .list-date-label{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.list-date-text{font-size:14px;font-weight:700;color:var(--tx2)}
-.list-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px}
+.list-date-text{font-size:15px;font-weight:700;color:var(--tx2)}
+.list-badge{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
 .list-badge.hol{color:#A32D2D;background:#FFF0F0}
 .list-badge.tod{color:#1D4ED8;background:#EFF6FF}
-.list-evt{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px;cursor:pointer}
+.list-evt{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:11px;background:var(--bg2);margin-bottom:5px;cursor:pointer}
 .list-evt:active{background:var(--bd)}
-.list-evt-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.list-evt-text{font-size:14px;font-weight:600;flex:1}
-.list-evt-remind{font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;padding:2px 7px;border-radius:10px;white-space:nowrap}
-.list-evt-arrow{font-size:14px;color:var(--tx3);flex-shrink:0}
-.list-todo{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:11px;background:var(--bg2);margin-bottom:4px}
-.list-todo-cb{width:20px;height:20px;border:2px solid var(--bd);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:var(--bg)}
+.list-evt-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.list-evt-text{font-size:16px;font-weight:600;flex:1}
+.list-evt-remind{font-size:12px;font-weight:600;color:#534AB7;background:#EEEDFE;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.list-evt-arrow{font-size:16px;color:var(--tx3);flex-shrink:0}
+.list-todo{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:11px;background:var(--bg2);margin-bottom:5px}
+.list-todo-cb{width:22px;height:22px;border:2px solid var(--bd);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;background:var(--bg)}
 .list-todo-cb.done{background:#1D9E75;border-color:#1D9E75;color:#fff}
-.list-todo-text{font-size:14px;font-weight:600;flex:1}
+.list-todo-text{font-size:16px;font-weight:600;flex:1}
 .list-todo-text.done{text-decoration:line-through;color:var(--tx3)}
 .list-todo-remind{font-size:11px;font-weight:600;color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A;padding:2px 7px;border-radius:10px;white-space:nowrap}
 .list-empty{text-align:center;padding:24px 0;font-size:13px;font-weight:500;color:var(--tx3)}
@@ -268,13 +268,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
       </div>
       <div class="jump-shortcuts">
         <span>快捷：</span>
-        <button class="yr-chip" data-y="-50">-50年</button>
         <button class="yr-chip" data-y="-10">-10年</button>
         <button class="yr-chip" data-y="-1">去年</button>
         <button class="yr-chip" data-y="0">今年</button>
         <button class="yr-chip" data-y="1">明年</button>
         <button class="yr-chip" data-y="10">+10年</button>
-        <button class="yr-chip" data-y="50">+50年</button>
       </div>
     </div>
   </div>
@@ -362,12 +360,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
     </div>
     <div class="panel active" id="panel-events">
       <div class="sel-label" id="sel-label">請點選日期</div>
-      <div id="hol-box"></div><div id="lunar-box"></div>
+      <div id="hol-box"></div>
       <div class="event-list" id="event-list"></div>
       <div class="add-bar">
         <input type="text" id="evt-input" placeholder="事件名稱（可加時間，如：開會 14:00）"/>
         <button class="abtn" id="add-evt-btn">+</button>
       </div>
+      <div id="lunar-box" style="margin-top:10px"></div>
     </div>
     <div class="panel" id="panel-todos">
       <div class="event-list" id="todo-list"></div>
@@ -512,12 +511,12 @@ async function setupPush() {
   } catch(e) { console.warn('Web Push 設定失敗:', e.message); }
 }
 
-async function scheduleWebPush(scheduleId, body, sendAt) {
+async function scheduleWebPush(scheduleId, body, sendAt, tag) {
   if (!WORKER_URL || !userId) return;
   try {
     const res = await fetch(`${WORKER_URL}/api/schedule`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt })
+      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt, tag: tag || scheduleId })
     });
     const data = await res.json();
     console.log(`📅 排程推播 [${scheduleId}]`, data, '時間:', new Date(sendAt).toLocaleString('zh-TW'));
@@ -678,22 +677,26 @@ async function rescheduleAllReminders(){
       const nkey=`evt-${dk}-${ev.title}`;
       const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
       const ms=sendAt-now;
-      // 用 scheduleNotif 而非直接 setTimeout，確保超過 24.8 天的不排本地通知
       scheduleNotif(nkey,'曼巴行事曆提醒',body,ms);
-      // 裝置專屬 scheduleId（含 userId 前綴避免跨裝置覆蓋）
       const devPrefix=userId?userId.slice(0,8):'dev';
       const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-      scheduleWebPush(schedId,body,sendAt);
+      scheduleWebPush(schedId,body,sendAt,nkey);
     });
   });
   todos.forEach(t=>{
     if(!t.remindAt||t.remindAt<=now+minFuture) return;
     const nkey=`todo-${t.id}`;
     const ms=t.remindAt-now;
-    scheduleNotif(nkey,'待辦提醒',t.text,ms);
+    const tRef=t;
+    scheduleNotif(nkey,'待辦提醒',t.text,ms,()=>{
+      const idx=todos.findIndex(x=>x.id===tRef.id);
+      if(idx>=0){todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;
+        try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+        renderTodos();renderMonthList();}
+    });
     const devPrefix=userId?userId.slice(0,8):'dev';
     const schedId=`${devPrefix}-${nkey}-${t.remindAt}`;
-    scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt);
+    scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt,nkey);
   });
 }
 
@@ -827,7 +830,7 @@ function setEvtReminder(ev,dk,minsBefore,label,date){
   // Web Push（App 關閉時）
   const schedId=`${nkey}-${sendAt}`;
   cancelWebPush(schedId);
-  if(ms>0) scheduleWebPush(schedId,body,sendAt);
+  if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
   ev.remindLabel=label;return true;
 }
 function setTodoReminder(t, minsFromNow, label){
@@ -835,15 +838,19 @@ function setTodoReminder(t, minsFromNow, label){
   const nkey=`todo-${t.id}`;
   const ms=minsFromNow*60000;
   const sendAt=Date.now()+ms;
-  // 存入絕對時間，方便另一台裝置同步後重新排程
   t.remindAt=sendAt;
   t.remindLabel=label;
-  // 本地通知
-  scheduleNotif(nkey,'待辦提醒',t.text,ms);
+  // 本地通知：時間到後自動清除提醒標籤
+  scheduleNotif(nkey,'待辦提醒',t.text,ms,()=>{
+    const idx=todos.findIndex(x=>x.id===t.id);
+    if(idx>=0){todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;
+      try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+      renderTodos();renderMonthList();}
+  });
   // Web Push
   const schedId=`${nkey}-${sendAt}`;
   cancelWebPush(schedId);
-  scheduleWebPush(schedId,`待辦：${t.text}`,sendAt);
+  scheduleWebPush(schedId,`待辦：${t.text}`,sendAt,nkey);
   t._pushSchedId=schedId;
   return true;
 }
@@ -1255,7 +1262,7 @@ document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selecte
     const nkey=`evt-${dk}-${newEvt.title}`;
     const body=newEvt.time?`${newEvt.time} ${newEvt.title}`:newEvt.title;
     scheduleNotif(nkey,'行事曆提醒',body,ms);
-    if(ms>0) scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime());
+    if(ms>0) scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime(),nkey);
   }
   inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
@@ -1289,14 +1296,26 @@ async function showNotif(title, body, tag){
   try{ new Notification(title, opts); }catch(e){ console.error('通知失敗:', e.message); }
 }
 
-function scheduleNotif(nkey, title, body, ms){
+function playBeep(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=880;gain.gain.value=0.25;
+    osc.start();gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.6);
+    osc.stop(ctx.currentTime+0.6);
+  }catch(e){}
+}
+function scheduleNotif(nkey, title, body, ms, onFired){
   if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
-  if(ms <= 0){ showNotif(title, body, nkey); return; }
+  if(ms <= 0){ showNotif(title, body, nkey); playBeep(); if(onFired) onFired(); return; }
   // JS setTimeout 最大值約 24.8 天（2^31-1 ms），超過會立刻觸發，所以不排程
   if(ms > 2147483647) return;
   scheduledNotifs[nkey] = setTimeout(()=>{
     showNotif(title, body, nkey);
+    playBeep();
     delete scheduledNotifs[nkey];
+    if(onFired) onFired();
   }, ms);
 }
 
