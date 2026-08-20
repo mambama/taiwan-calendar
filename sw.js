@@ -69,6 +69,8 @@ self.addEventListener('push', event => {
 
   event.waitUntil(
     self.registration.showNotification(data.title || '行事曆提醒', options)
+      .then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true}))
+      .then(clients=>clients.forEach(c=>c.postMessage({type:'push-fired',tag:options.tag})))
   );
 });
 
