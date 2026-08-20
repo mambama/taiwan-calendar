@@ -39,7 +39,7 @@
 [data-theme="dark"] select,[data-theme="dark"] input{color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px}
-.app{max-width:460px;margin:0 auto;padding:10px 12px 40px}
+.app{max-width:540px;margin:0 auto;padding:10px 16px 40px}
 
 /* ── 頂部 ── */
 .top-bar{display:flex;align-items:center;gap:6px;padding:8px 0 12px}
@@ -314,30 +314,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 
       <!-- 同步代碼 -->
       <div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🔑 同步代碼</div>
-        <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;line-height:1.6">在另一台裝置輸入<b>完全相同的代碼</b>後按「設定」，再按「立即拉取」即可同步。代碼可自訂（英文＋數字）。</div>
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🔑 同步代碼（可自訂英文或數字）</div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
           <input type="text" id="sync-code-input" maxlength="20"
             style="flex:1;font-size:15px;font-weight:700;letter-spacing:3px;padding:8px 10px;border:1.5px solid #534AB7;border-radius:9px;background:var(--bg);color:var(--tx);outline:none;text-transform:uppercase"/>
           <button id="save-sync-code" style="font-size:12px;font-weight:700;padding:8px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap">設定</button>
         </div>
-        <div id="sync-code-status" style="font-size:11px;color:var(--tx3)"></div>
-        <button id="manual-sync-btn" style="width:100%;margin-top:8px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#1D9E75;color:#fff;cursor:pointer">☁️ 立即拉取（從雲端更新到本機）</button>
-        <button id="push-data-btn" style="width:100%;margin-top:6px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer">⬆️ 推送資料（上傳本機到雲端）</button>
+        <div id="sync-code-status" style="font-size:11px;color:var(--tx3);margin-bottom:8px"></div>
+        <button id="push-data-btn" style="width:100%;margin-top:4px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer">⬆️ 上傳資料（本機 → 雲端）</button>
+        <button id="manual-sync-btn" style="width:100%;margin-top:6px;font-size:13px;font-weight:700;padding:9px;border:none;border-radius:10px;background:#1D9E75;color:#fff;cursor:pointer">⬇️ 下載資料（雲端 → 本機）</button>
         <div id="sync-cloud-status" style="font-size:11px;padding:5px 0 0;color:var(--tx3);text-align:center"></div>
       </div>
 
-      <!-- 備份 -->
-      <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">💾 手動備份</div>
-      <div class="sync-actions">
-        <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff">📤 匯出資料</button>
-        <button onclick="document.getElementById('import-input').click()" style="background:none;border:1.5px solid #D97706;color:#92400E">📥 匯入資料</button>
-        <button onclick="document.getElementById('sync-box').style.display='none'" style="background:none;border:1.5px solid var(--bd);color:var(--tx2)">關閉</button>
-      </div>
-      <input type="file" id="import-input" accept=".json" style="display:none"/>
-
       <!-- Worker 網址 -->
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
+      <div style="padding-bottom:10px;border-bottom:1px solid var(--bd);margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🌐 Cloudflare Worker 網址</div>
         <div id="worker-url-hint" style="font-size:11px;color:#A32D2D;margin-bottom:6px;display:none">⚠️ 尚未設定，App 關閉時無法收到通知也無法同步</div>
         <div style="display:flex;gap:6px;align-items:center">
@@ -347,6 +337,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
         </div>
         <div id="worker-url-status" style="font-size:11px;margin-top:5px;color:var(--tx3)"></div>
       </div>
+
+      <!-- 手動備份（放最底下） -->
+      <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">💾 手動備份</div>
+      <div class="sync-actions">
+        <button onclick="exportData()" style="background:#F59E0B;border:none;color:#fff">📤 匯出資料</button>
+        <button onclick="document.getElementById('import-input').click()" style="background:none;border:1.5px solid #D97706;color:#92400E">📥 匯入資料</button>
+        <button onclick="document.getElementById('sync-box').style.display='none'" style="background:none;border:1.5px solid var(--bd);color:var(--tx2)">關閉</button>
+      </div>
+      <input type="file" id="import-input" accept=".json" style="display:none"/>
     </div>
   </div>
 
@@ -873,95 +872,85 @@ function renderEventPanel(){
   if(!allEvts.length){list.innerHTML='<div class="empty-msg">這天沒有事件</div>';return}
   allEvts.forEach((ev,i)=>{
     const dk=ev._dk;
-    const isRecurring=ev._recurring;
-    // index within the original stored array
     const origEvts=localEvents[dk]||[];
     const origIdx=origEvts.findIndex(e=>e.title===ev.title&&e.repeat===ev.repeat);
     const isExp=expandedEvt&&expandedEvt.dk===dk&&expandedEvt.idx===origIdx;
     const mode=isExp?expandedEvt.mode:null;
     const item=document.createElement('div');item.className='event-item';
-    const main=document.createElement('div');main.className='event-main';
+    const main=document.createElement('div');main.className='event-main';main.style.cursor='pointer';
     const remBadge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
     const repBadge=ev.repeat?`<span class="repeat-badge">${getRepeatLabel(ev.repeat)}</span>`:'';
     const timeBadge=ev.time?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
-    main.innerHTML=`<div class="ev-dot"></div><div class="ev-title-wrap"><span class="ev-title">${ev.title}</span>${timeBadge}${repBadge}${remBadge}</div>
-      <div class="ev-actions">
+    // 只有選中時才顯示操作按鈕
+    const actionsHtml=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">🔔</button>
         <button class="ic-btn repeat${mode==='repeat'?' active-mode':''}">🔁</button>
         <button class="ic-btn del${mode==='confirm-del'?' active-mode':''}">×</button>
-      </div>`;
+      </div>`:'<div style="font-size:12px;color:var(--tx3);flex-shrink:0">›</div>';
+    main.innerHTML=`<div class="ev-dot"></div><div class="ev-title-wrap"><span class="ev-title">${ev.title}</span>${timeBadge}${repBadge}${remBadge}</div>${actionsHtml}`;
+    // 點擊列本體切換展開/收合
+    main.addEventListener('click',e=>{
+      if(e.target.closest('.ev-actions'))return;
+      expandedEvt=(isExp&&mode===null)?null:{dk,idx:origIdx,mode:null};
+      renderEventPanel();
+    });
     item.appendChild(main);
     if(mode==='edit'){
-      const bar=document.createElement('div');bar.className='sub-bar';bar.style.flexWrap='wrap';
-      bar.innerHTML=`<input type="text" class="edit-title-inp" placeholder="事件名稱" style="flex:1;min-width:120px"/><input type="time" class="edit-time-inp" style="width:110px;font-size:13px;padding:5px 8px;border:1.5px solid #534AB7;border-radius:10px;background:var(--bg);color:var(--tx);outline:none"/><button class="cancel-btn2">取消</button><button class="save-btn2">儲存</button>`;
+      const bar=document.createElement('div');bar.className='sub-bar';
+      bar.innerHTML=`<input type="text" class="edit-title-inp" placeholder="事件名稱" style="flex:1"/><button class="cancel-btn2">取消</button><button class="save-btn2">儲存</button>`;
       item.appendChild(bar);
-      setTimeout(()=>{
-        const ti=bar.querySelector('.edit-title-inp');const tm=bar.querySelector('.edit-time-inp');
-        if(ti){ti.value=ev.title;ti.focus();}
-        if(tm&&ev.time)tm.value=ev.time;
-      },0);
+      setTimeout(()=>{const ti=bar.querySelector('.edit-title-inp');if(ti){ti.value=ev.title;ti.focus();}},0);
       bar.querySelector('.save-btn2').addEventListener('click',()=>{
         const v=bar.querySelector('.edit-title-inp').value.trim();if(!v)return;
-        const t=bar.querySelector('.edit-time-inp').value;
-        if(origIdx>=0){
-          const updated={...origEvts[origIdx],title:v,time:t||undefined};
-          origEvts[origIdx]=updated;
-          localEvents[dk]=origEvts;
-
-          // 編輯後重新排程提醒
-          if(updated.remindLabel&&notifPermission==='granted'){
-            const rl=updated.remindLabel;
-            const labelToMins={
-              '10分鐘前':10,'1天前':60*24,'3天前':60*24*3,
-            };
-            // 從 label 反推分鐘數
-            let mins=labelToMins[rl];
-            // 自訂的 label 如「2天前」「3週前」也要解析
-            if(mins==null){
-              const mc=rl.match(/^(\d+)\s*(分鐘|小時|天|週|個月)前$/);
-              if(mc){const n=parseInt(mc[1]),u=mc[2];const um={'分鐘':1,'小時':60,'天':60*24,'週':60*24*7,'個月':60*24*30};mins=n*um[u];}
-            }
-            if(mins!=null){
-              // 有「X 前」的提醒，重新排程
-              setEvtReminder(updated,dk,mins,rl,selectedDate);
-            } else {
-              // 「當天 HH:MM」格式 → 直接在該時間點觸發
-              const tm2=updated.time||'00:00';
-              const[rh2,rm2]=tm2.split(':').map(Number);
-              const base2=new Date(selectedDate);base2.setHours(rh2,rm2,0,0);
-              const ms2=base2-Date.now();
-              const nkey2=`evt-${dk}-${updated.title}`;
-              const body2=updated.time?`${updated.time} ${updated.title}`:updated.title;
-              scheduleNotif(nkey2,'行事曆提醒',body2,ms2);
-              if(ms2>0) scheduleWebPush(`${nkey2}-${base2.getTime()}`,body2,base2.getTime());
-              updated.remindLabel=updated.time?`當天 ${updated.time}`:'當天 00:00';
-              origEvts[origIdx]=updated;
-            }
-          }
-        }
-        expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+        if(origIdx>=0){origEvts[origIdx]={...origEvts[origIdx],title:v};localEvents[dk]=origEvts;}
+        expandedEvt={dk,idx:origIdx,mode:null};saveEvents();renderEventPanel();renderCalendar();
       });
-      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt=null;renderEventPanel()});
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel()});
     }
     if(mode==='remind'){
-      item.appendChild(buildRemindPopup({
+      // 提醒 popup 頂部加入事件時間設定
+      const wrap=document.createElement('div');
+      const timeRow=document.createElement('div');
+      timeRow.style.cssText='display:flex;gap:6px;align-items:center;padding:6px 12px 10px;border-bottom:1px solid var(--bd2);margin-bottom:4px';
+      const timeLbl=document.createElement('span');timeLbl.textContent='事件時間：';
+      timeLbl.style.cssText='font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap';
+      const timeInp=document.createElement('input');timeInp.type='time';
+      timeInp.style.cssText='flex:1;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none';
+      if(ev.time)timeInp.value=ev.time;
+      const timeSetBtn=document.createElement('button');timeSetBtn.textContent='套用';
+      timeSetBtn.style.cssText='font-size:12px;font-weight:700;padding:6px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap';
+      timeSetBtn.addEventListener('click',()=>{
+        const newTime=timeInp.value||undefined;
+        if(origIdx>=0){
+          origEvts[origIdx]={...origEvts[origIdx],time:newTime};
+          // 同步更新提醒 label
+          if(origEvts[origIdx].remindLabel&&origEvts[origIdx].remindLabel.startsWith('當天')){
+            origEvts[origIdx].remindLabel=newTime?`當天 ${newTime}`:'當天 00:00';
+            setEvtReminder(origEvts[origIdx],dk,0,origEvts[origIdx].remindLabel,selectedDate);
+          } else if(origEvts[origIdx].remindLabel){
+            const mc=origEvts[origIdx].remindLabel.match(/^(\d+)\s*(分鐘|小時|天|週|個月)前$/);
+            if(mc){const n=parseInt(mc[1]),u=mc[2];const um={'分鐘':1,'小時':60,'天':60*24,'週':60*24*7,'個月':60*24*30};setEvtReminder(origEvts[origIdx],dk,n*um[u],origEvts[origIdx].remindLabel,selectedDate);}
+          }
+          localEvents[dk]=origEvts;
+        }
+        saveEvents();renderEventPanel();renderCalendar();
+      });
+      timeRow.appendChild(timeLbl);timeRow.appendChild(timeInp);timeRow.appendChild(timeSetBtn);
+      wrap.appendChild(timeRow);
+      wrap.appendChild(buildRemindPopup({
         presets:[{key:'none',label:'不提醒',mins:null},{key:'1d',label:'1天前',mins:60*24},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
         activeLabel:ev.remindLabel,nowMode:false,
         onPreset:(mins,label)=>{
           if(mins===null){
-            // 清除提醒
-            if(origIdx>=0){
-              origEvts[origIdx].remindLabel=undefined;
-              const nkey=`evt-${dk}-${origEvts[origIdx].title}`;
-              if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
-            }
-            localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList();
+            if(origIdx>=0){origEvts[origIdx].remindLabel=undefined;const nkey=`evt-${dk}-${origEvts[origIdx].title}`;if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}}
+            localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList();
           }else{
-            if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt=null;renderEventPanel();renderMonthList()}
+            if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList()}
           }
         }
       }));
+      item.appendChild(wrap);
     }
     if(mode==='repeat'){
       const pop=document.createElement('div');pop.className='reminder-popup';
@@ -982,7 +971,7 @@ function renderEventPanel(){
             cr.style.display=cr.style.display==='none'?'flex':'none';return;
           }
           if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],repeat:o.key||undefined};
-          localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+          localEvents[dk]=origEvts;expandedEvt={dk,idx:origIdx,mode:null};saveEvents();renderEventPanel();renderCalendar();
         });
         g.appendChild(btn);
       });
@@ -1006,7 +995,7 @@ function renderEventPanel(){
       setBtn.addEventListener('click',()=>{
         const n=parseInt(numInp.value)||2,unit=unitSel.value;
         if(origIdx>=0)origEvts[origIdx]={...origEvts[origIdx],repeat:{n,unit}};
-        localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderCalendar();
+        localEvents[dk]=origEvts;expandedEvt={dk,idx:origIdx,mode:null};saveEvents();renderEventPanel();renderCalendar();
       });
       cr.appendChild(numInp);cr.appendChild(unitSel);cr.appendChild(setBtn);
       pop.appendChild(cr);
@@ -1029,16 +1018,18 @@ function renderEventPanel(){
       const bar=document.createElement('div');bar.className='sub-bar';bar.style.cssText='padding:0 12px 10px;gap:8px;align-items:center';
       bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此事件？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
       item.appendChild(bar);
-      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt=null;renderEventPanel()});
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel()});
       bar.querySelector('.save-btn2').addEventListener('click',()=>{
         if(origIdx>=0)origEvts.splice(origIdx,1);
         localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar();
       });
     }
-    main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='edit')?null:{dk,idx:origIdx,mode:'edit'};renderEventPanel()});
-    main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='remind')?null:{dk,idx:origIdx,mode:'remind'};renderEventPanel()});
-    main.querySelector('.ic-btn.repeat').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='repeat')?null:{dk,idx:origIdx,mode:'repeat'};renderEventPanel()});
-    main.querySelector('.ic-btn.del').addEventListener('click',()=>{expandedEvt=(isExp&&mode==='confirm-del')?null:{dk,idx:origIdx,mode:'confirm-del'};renderEventPanel()});
+    if(isExp){
+      main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedEvt=(mode==='edit')?{dk,idx:origIdx,mode:null}:{dk,idx:origIdx,mode:'edit'};renderEventPanel()});
+      main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedEvt=(mode==='remind')?{dk,idx:origIdx,mode:null}:{dk,idx:origIdx,mode:'remind'};renderEventPanel()});
+      main.querySelector('.ic-btn.repeat').addEventListener('click',()=>{expandedEvt=(mode==='repeat')?{dk,idx:origIdx,mode:null}:{dk,idx:origIdx,mode:'repeat'};renderEventPanel()});
+      main.querySelector('.ic-btn.del').addEventListener('click',()=>{expandedEvt=(mode==='confirm-del')?{dk,idx:origIdx,mode:null}:{dk,idx:origIdx,mode:'confirm-del'};renderEventPanel()});
+    }
     list.appendChild(item);
   });
 }
@@ -1050,23 +1041,24 @@ function renderTodos(){
   todos.forEach(t=>{
     const isExp=expandedTodo&&expandedTodo.id===t.id,mode=isExp?expandedTodo.mode:null;
     const item=document.createElement('div');item.className='todo-item';
-    const main=document.createElement('div');main.className='todo-main';
+    const main=document.createElement('div');main.className='todo-main';main.style.cursor='pointer';
     const badge=t.remindLabel?`<span class="remind-badge now">⏰ ${t.remindLabel}</span>`:'';
-    main.innerHTML=`<div class="todo-cb${t.done?' done':''}" data-id="${t.id}">${t.done?'✓':''}</div>
-      <div class="ev-title-wrap"><span class="todo-text${t.done?' done':''}">${t.text}</span>${badge}</div>
-      <div class="ev-actions">
+    const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">⏰</button>
         <button class="ic-btn del">×</button>
-      </div>`;
+      </div>`:'<div style="font-size:12px;color:var(--tx3);flex-shrink:0">›</div>';
+    main.innerHTML=`<div class="todo-cb${t.done?' done':''}" data-id="${t.id}">${t.done?'✓':''}</div>
+      <div class="ev-title-wrap"><span class="todo-text${t.done?' done':''}">${t.text}</span>${badge}</div>
+      ${actionsHtmlT}`;
     item.appendChild(main);
     if(mode==='edit'){
       const bar=document.createElement('div');bar.className='sub-bar';
       bar.innerHTML=`<input type="text" value="${t.text}"/><button class="cancel-btn2">取消</button><button class="save-btn2">儲存</button>`;
       item.appendChild(bar);
       setTimeout(()=>{const inp=bar.querySelector('input');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}},0);
-      bar.querySelector('.save-btn2').addEventListener('click',()=>{const v=bar.querySelector('input').value.trim();if(!v)return;todos=todos.map(x=>x.id===t.id?{...x,text:v}:x);expandedTodo=null;saveTodos();renderTodos()});
-      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo=null;renderTodos()});
+      bar.querySelector('.save-btn2').addEventListener('click',()=>{const v=bar.querySelector('input').value.trim();if(!v)return;todos=todos.map(x=>x.id===t.id?{...x,text:v}:x);expandedTodo={id:t.id,mode:null};saveTodos();renderTodos()});
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo={id:t.id,mode:null};renderTodos()});
     }
     if(mode==='remind'){
       item.appendChild(buildRemindPopup({
@@ -1076,8 +1068,8 @@ function renderTodos(){
           const idx=todos.findIndex(x=>x.id===t.id);
           if(mins===null){
             if(idx>=0){const nk=`todo-${todos[idx].id}`;if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;}
-            expandedTodo=null;saveTodos();renderTodos();renderMonthList();
-          }else if(idx>=0&&setTodoReminder(todos[idx],mins,label)){expandedTodo=null;saveTodos();renderTodos();renderMonthList()}
+            expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList();
+          }else if(idx>=0&&setTodoReminder(todos[idx],mins,label)){expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList()}
         }
       }));
       // 指定時間列
@@ -1099,20 +1091,27 @@ function renderTodos(){
         if(minsFromNow<=0){alert('請選擇未來的時間');return}
         const label=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
         const idx=todos.findIndex(x=>x.id===t.id);
-        if(idx>=0&&setTodoReminder(todos[idx],minsFromNow,label)){expandedTodo=null;saveTodos();renderTodos();renderMonthList()}
+        if(idx>=0&&setTodoReminder(todos[idx],minsFromNow,label)){expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList()}
       });
       dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
       item.appendChild(dtRow);
     }
-    main.querySelector('.todo-cb').addEventListener('click',()=>{todos=todos.map(x=>x.id===t.id?{...x,done:!x.done}:x);saveTodos();renderTodos();renderMonthList()});
-    main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(isExp&&mode==='edit')?null:{id:t.id,mode:'edit'};renderTodos()});
-    main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(isExp&&mode==='remind')?null:{id:t.id,mode:'remind'};renderTodos()});
-    main.querySelector('.ic-btn.del').addEventListener('click',()=>{
-      // 取消 Web Push 排程
-      if(t._pushSchedId) cancelWebPush(t._pushSchedId);
-      if(scheduledNotifs[`todo-${t.id}`]) clearTimeout(scheduledNotifs[`todo-${t.id}`]);
-      todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
+    // 點擊列本體切換展開/收合
+    main.addEventListener('click',e=>{
+      if(e.target.closest('.todo-cb')||e.target.closest('.ev-actions'))return;
+      expandedTodo=(isExp&&mode===null)?null:{id:t.id,mode:null};
+      renderTodos();
     });
+    main.querySelector('.todo-cb').addEventListener('click',e=>{e.stopPropagation();todos=todos.map(x=>x.id===t.id?{...x,done:!x.done}:x);saveTodos();renderTodos();renderMonthList()});
+    if(isExp){
+      main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(mode==='edit')?{id:t.id,mode:null}:{id:t.id,mode:'edit'};renderTodos()});
+      main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(mode==='remind')?{id:t.id,mode:null}:{id:t.id,mode:'remind'};renderTodos()});
+      main.querySelector('.ic-btn.del').addEventListener('click',()=>{
+        if(t._pushSchedId) cancelWebPush(t._pushSchedId);
+        if(scheduledNotifs[`todo-${t.id}`]) clearTimeout(scheduledNotifs[`todo-${t.id}`]);
+        todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
+      });
+    }
     list.appendChild(item);
   });
 }
