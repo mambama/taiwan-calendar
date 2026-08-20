@@ -42,12 +42,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .app{max-width:540px;margin:0 auto;padding:10px 16px 40px}
 
 /* ── 頂部 ── */
-.top-bar{display:flex;align-items:center;gap:6px;padding:8px 0 12px}
-.nav-btn{background:none;border:1.5px solid var(--bd);border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:18px;font-weight:600;flex-shrink:0}
+.top-bar{display:flex;align-items:center;gap:5px;padding:8px 0 12px;flex-wrap:nowrap}
+.nav-btn{background:none;border:1.5px solid var(--bd);border-radius:50%;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:18px;font-weight:600;flex-shrink:0}
 .nav-btn:active{background:var(--bg2)}
-.month-title{font-size:17px;font-weight:700;min-width:100px;text-align:center;flex-shrink:0}
-.spacer{flex:1}
-.top-btn{font-size:13px;font-weight:600;padding:8px 14px;border:1.5px solid var(--bd);border-radius:22px;background:none;color:var(--tx2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:38px}
+.month-title{font-size:16px;font-weight:700;min-width:88px;text-align:center;flex-shrink:1}
+.spacer{flex:1;min-width:0}
+.top-btn{font-size:12px;font-weight:600;padding:7px 10px;border:1.5px solid var(--bd);border-radius:22px;background:none;color:var(--tx2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:34px}
 .top-btn:active{background:var(--bg2)}
 .top-btn.active{border-color:#534AB7;color:#534AB7;background:#EEEDFE}
 .top-btn.list-active{border-color:#1D9E75;color:#0F6E56;background:#E1F5EE}
@@ -125,7 +125,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .solar-term{font-size:8px;font-weight:700;color:#1D9E75;line-height:1;text-align:center;width:100%}
 .hol-name{font-size:7.5px;font-weight:600;color:#A32D2D;line-height:1;margin-top:1px;text-align:center;max-width:100%;overflow:hidden}
 /* 事件圓點：日期數字正上方 */
-.ev-indicator{width:7px;height:7px;border-radius:50%;background:#F97316;margin:0 auto 2px;flex-shrink:0}
+.ev-indicator{position:absolute;top:3px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#F97316;}
 .ev-indicator.holiday-day{background:#F97316}
 .ev-indicator.selected-day{background:#F97316}
 
@@ -364,7 +364,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
       <div id="hol-box"></div>
       <div class="event-list" id="event-list"></div>
       <div class="add-bar">
-        <input type="text" id="evt-input" placeholder="事件名稱（可加時間，如：開會 14:00）"/>
+        <input type="text" id="evt-input" placeholder="新增事件"/>
         <button class="abtn" id="add-evt-btn">+</button>
       </div>
       <div id="lunar-box" style="margin-top:10px"></div>
@@ -880,7 +880,7 @@ function renderEventPanel(){
     const main=document.createElement('div');main.className='event-main';main.style.cursor='pointer';
     const remBadge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
     const repBadge=ev.repeat?`<span class="repeat-badge">${getRepeatLabel(ev.repeat)}</span>`:'';
-    const timeBadge=ev.time?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
+    const timeBadge=(ev.time&&!ev.remindLabel)?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
     // 只有選中時才顯示操作按鈕
     const actionsHtml=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
@@ -1237,7 +1237,7 @@ document.getElementById('manual-sync-btn').addEventListener('click',async()=>{
   const btn=document.getElementById('manual-sync-btn');
   btn.textContent='🔄 拉取中…';btn.disabled=true;
   await syncFromCloud(true);
-  btn.textContent='☁️ 立即拉取（從雲端更新到本機）';btn.disabled=false;
+  btn.textContent='⬇️ 下載資料（雲端 → 本機）';btn.disabled=false;
   const cst=document.getElementById('sync-cloud-status');
   if(cst&&cloudUpdatedAt) cst.textContent=`☁️ 上次同步：${new Date(cloudUpdatedAt).toLocaleString('zh-TW')}`;
 });
@@ -1249,7 +1249,7 @@ document.getElementById('push-data-btn').addEventListener('click',async()=>{
   const btn=document.getElementById('push-data-btn');
   btn.textContent='🔄 推送中…';btn.disabled=true;
   await syncToCloud();
-  btn.textContent='⬆️ 推送資料（上傳本機到雲端）';btn.disabled=false;
+  btn.textContent='⬆️ 上傳資料（本機 → 雲端）';btn.disabled=false;
   alert('✅ 資料已推送到雲端！\n另一台裝置按「立即拉取」即可同步。');
 });
 
