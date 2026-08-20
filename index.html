@@ -315,7 +315,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
       <!-- 同步代碼 -->
       <div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">🔑 同步代碼</div>
-        <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;line-height:1.6">在另一台裝置輸入相同代碼，即可自動同步資料。</div>
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;line-height:1.6">在另一台裝置輸入<b>完全相同的代碼</b>後按「設定」，再按「立即拉取」即可同步。代碼可自訂（英文＋數字）。</div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
           <input type="text" id="sync-code-input" maxlength="20"
             style="flex:1;font-size:15px;font-weight:700;letter-spacing:3px;padding:8px 10px;border:1.5px solid #534AB7;border-radius:9px;background:var(--bg);color:var(--tx);outline:none;text-transform:uppercase"/>
@@ -445,9 +445,17 @@ async function syncFromCloud(manual=false){
       return;
     }
     if(data.updatedAt > cloudUpdatedAt || manual){
-      const wasNewer = data.updatedAt > cloudUpdatedAt;
-      localEvents = data.events || {};
-      todos = data.todos || [];
+      // 安全檢查：雲端資料不能是空的（保護本機資料不被空資料覆蓋）
+      const cloudEvents = data.events || {};
+      const cloudTodos = data.todos || [];
+      const cloudHasData = Object.keys(cloudEvents).length > 0 || cloudTodos.length > 0;
+      const localHasData = Object.keys(localEvents).length > 0 || todos.length > 0;
+      if(!cloudHasData && localHasData){
+        if(manual) alert('⚠️ 雲端資料是空的，保留本機資料不覆蓋。\n\n若要同步，請先在有資料的裝置按「⬆️ 推送資料」。');
+        return;
+      }
+      localEvents = cloudEvents;
+      todos = cloudTodos;
       nextId = todos.reduce((m,t)=>Math.max(m,t.id), 0) + 1;
       cloudUpdatedAt = data.updatedAt;
       try{ localStorage.setItem('cal_events', JSON.stringify(localEvents)); }catch(e){}
@@ -582,8 +590,11 @@ document.getElementById('import-input').addEventListener('change',e=>{
       const data=JSON.parse(ev.target.result);
       if(data.events)localEvents=data.events;
       if(data.todos){todos=data.todos;nextId=todos.reduce((m,t)=>Math.max(m,t.id),0)+1}
-      saveEvents();saveTodos();renderCalendar();renderEventPanel();renderTodos();renderMonthList();
-      alert('✅ 資料匯入成功！已自動同步到雲端。');
+      // 先存本機，不自動推雲端（避免覆蓋其他裝置較新的資料）
+      try{localStorage.setItem('cal_events',JSON.stringify(localEvents));showToast()}catch(e){}
+      try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+      renderCalendar();renderEventPanel();renderTodos();renderMonthList();
+      alert('✅ 資料匯入成功！\n\n若要同步到其他裝置，請按「⬆️ 推送資料」上傳到雲端。');
     }catch(err){alert('❌ 匯入失敗，請確認檔案格式正確。')}
   };reader.readAsText(file);e.target.value='';
 });
@@ -667,8 +678,8 @@ async function rescheduleAllReminders(){
       const nkey=`evt-${dk}-${ev.title}`;
       const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
       const ms=sendAt-now;
-      if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
-      scheduledNotifs[nkey]=setTimeout(()=>{showNotif('曼巴行事曆提醒',body,nkey);delete scheduledNotifs[nkey]},ms);
+      // 用 scheduleNotif 而非直接 setTimeout，確保超過 24.8 天的不排本地通知
+      scheduleNotif(nkey,'曼巴行事曆提醒',body,ms);
       // 裝置專屬 scheduleId（含 userId 前綴避免跨裝置覆蓋）
       const devPrefix=userId?userId.slice(0,8):'dev';
       const schedId=`${devPrefix}-${nkey}-${sendAt}`;
@@ -679,8 +690,7 @@ async function rescheduleAllReminders(){
     if(!t.remindAt||t.remindAt<=now+minFuture) return;
     const nkey=`todo-${t.id}`;
     const ms=t.remindAt-now;
-    if(scheduledNotifs[nkey]) clearTimeout(scheduledNotifs[nkey]);
-    scheduledNotifs[nkey]=setTimeout(()=>{showNotif('待辦提醒',t.text,nkey);delete scheduledNotifs[nkey]},ms);
+    scheduleNotif(nkey,'待辦提醒',t.text,ms);
     const devPrefix=userId?userId.slice(0,8):'dev';
     const schedId=`${devPrefix}-${nkey}-${t.remindAt}`;
     scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt);
