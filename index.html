@@ -148,17 +148,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 
 /* ── 事件列表 ── */
 .event-list{display:flex;flex-direction:column;gap:6px}
-.event-item{border-radius:11px;background:#D1FAE5;overflow:hidden;border:1px solid #6EE7B7;border-left:4px solid #059669}
+.event-item{border-radius:11px;background:#DBEAFE;overflow:hidden;border:1px solid #93C5FD;border-left:4px solid #2563EB}
 .todo-item{border-radius:11px;background:#F0EFFE;overflow:hidden;border:1px solid #C4BCF8;border-left:4px solid #534AB7}
-[data-theme="dark"] .event-item{background:#0a2218;border-color:#1a5c38}
+[data-theme="dark"] .event-item{background:#0f1e3a;border-color:#1e3a6e}
 [data-theme="dark"] .todo-item{background:#1a1535;border-color:#362d6e}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0a2218;border-color:#1a5c38}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0f1e3a;border-color:#1e3a6e}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}}
 .event-main,.todo-main{display:flex;align-items:center;gap:8px;padding:13px 12px}
-.ev-dot{width:9px;height:9px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.ev-dot{width:9px;height:9px;border-radius:50%;background:#2563EB;flex-shrink:0}
 .ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.ev-title{font-size:17px;font-weight:700;color:#0A5C38}
-[data-theme="dark"] .ev-title{color:#5ECFA0}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ev-title{color:#5ECFA0}}
+.ev-title{font-size:17px;font-weight:700;color:#1D4ED8}
+[data-theme="dark"] .ev-title{color:#93C5FD}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ev-title{color:#93C5FD}}
 .remind-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#534AB7;background:#EEEDFE;border-radius:10px;padding:2px 7px;white-space:nowrap}
 .remind-badge.now{color:#7C4A00;background:#FEF3C7;border:1px solid #FDE68A}
 .repeat-badge{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;color:#0F6E56;background:#E1F5EE;border-radius:10px;padding:2px 7px;white-space:nowrap}
@@ -216,14 +216,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .list-badge{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
 .list-badge.hol{color:#A32D2D;background:#FFF0F0}
 .list-badge.tod{color:#1D4ED8;background:#EFF6FF}
-.list-evt{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:11px;background:#D1FAE5;border:1px solid #6EE7B7;border-left:4px solid #059669;margin-bottom:5px;cursor:pointer}
+.list-evt{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:11px;background:#DBEAFE;border:1px solid #93C5FD;border-left:4px solid #2563EB;margin-bottom:5px;cursor:pointer}
 .list-evt:active{opacity:.8}
-[data-theme="dark"] .list-evt{background:#0a2218;border-color:#1a5c38}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt{background:#0a2218;border-color:#1a5c38}}
-.list-evt-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.list-evt-text{font-size:16px;font-weight:700;flex:1;color:#0A5C38}
-[data-theme="dark"] .list-evt-text{color:#5ECFA0}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt-text{color:#5ECFA0}}
+[data-theme="dark"] .list-evt{background:#0f1e3a;border-color:#1e3a6e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt{background:#0f1e3a;border-color:#1e3a6e}}
+.list-evt-dot{width:8px;height:8px;border-radius:50%;background:#2563EB;flex-shrink:0}
+.list-evt-text{font-size:16px;font-weight:700;flex:1;color:#1D4ED8}
+[data-theme="dark"] .list-evt-text{color:#93C5FD}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt-text{color:#93C5FD}}
 .list-evt-remind{font-size:12px;font-weight:600;color:#534AB7;background:#EEEDFE;padding:2px 8px;border-radius:10px;white-space:nowrap}
 .list-evt-arrow{font-size:16px;color:var(--tx3);flex-shrink:0}
 .list-todo{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:11px;background:#F0EFFE;border:1px solid #C4BCF8;border-left:4px solid #534AB7;margin-bottom:5px}
