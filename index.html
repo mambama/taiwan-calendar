@@ -148,11 +148,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 
 /* ── 事件列表 ── */
 .event-list{display:flex;flex-direction:column;gap:6px}
-.event-item{border-radius:11px;background:#E8F8F2;overflow:hidden;border:1px solid #A8E6CF;border-left:4px solid #1D9E75}
+.event-item{border-radius:11px;background:#D1FAE5;overflow:hidden;border:1px solid #6EE7B7;border-left:4px solid #059669}
 .todo-item{border-radius:11px;background:#F0EFFE;overflow:hidden;border:1px solid #C4BCF8;border-left:4px solid #534AB7}
-[data-theme="dark"] .event-item{background:#0d2018;border-color:#1a4530}
+[data-theme="dark"] .event-item{background:#0a2218;border-color:#1a5c38}
 [data-theme="dark"] .todo-item{background:#1a1535;border-color:#362d6e}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0d2018;border-color:#1a4530}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0a2218;border-color:#1a5c38}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}}
 .event-main,.todo-main{display:flex;align-items:center;gap:8px;padding:13px 12px}
 .ev-dot{width:9px;height:9px;border-radius:50%;background:#1D9E75;flex-shrink:0}
 .ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -216,10 +216,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .list-badge{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
 .list-badge.hol{color:#A32D2D;background:#FFF0F0}
 .list-badge.tod{color:#1D4ED8;background:#EFF6FF}
-.list-evt{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:11px;background:#E8F8F2;border:1px solid #A8E6CF;border-left:4px solid #1D9E75;margin-bottom:5px;cursor:pointer}
+.list-evt{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:11px;background:#D1FAE5;border:1px solid #6EE7B7;border-left:4px solid #059669;margin-bottom:5px;cursor:pointer}
 .list-evt:active{opacity:.8}
-[data-theme="dark"] .list-evt{background:#0d2018;border-color:#1a4530}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt{background:#0d2018;border-color:#1a4530}}
+[data-theme="dark"] .list-evt{background:#0a2218;border-color:#1a5c38}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-evt{background:#0a2218;border-color:#1a5c38}}
 .list-evt-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
 .list-evt-text{font-size:16px;font-weight:700;flex:1;color:#0A5C38}
 [data-theme="dark"] .list-evt-text{color:#5ECFA0}
@@ -264,8 +264,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
     <span class="month-title" id="month-label"></span>
     <button class="nav-btn" id="next">›</button>
     <button class="nav-btn" id="theme-btn" title="深色/淺色模式" style="font-size:16px;border-radius:50%">🌙</button>
-    <div class="spacer"></div>
-    <button class="top-btn" id="today-btn">今天</button>
+    <button class="top-btn" id="today-btn" style="margin-left:auto">今天</button>
     <button class="top-btn" id="jump-btn">查詢 ▾</button>
     <button class="top-btn" id="list-btn">清單</button>
   </div>
