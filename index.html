@@ -504,6 +504,24 @@ function urlBase64ToUint8Array(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+// 自動判斷裝置名稱（作業系統 + 瀏覽器），方便伺服器端辨識裝置
+function getDeviceLabel(){
+  const ua = navigator.userAgent;
+  let os = '未知系統';
+  if (/iPhone/.test(ua)) os = 'iPhone';
+  else if (/iPad/.test(ua)) os = 'iPad';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/Windows/.test(ua)) os = 'Windows';
+  else if (/Macintosh/.test(ua)) os = 'Mac';
+  let browser = '瀏覽器';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua)) browser = 'Chrome';
+  else if (/CriOS\//.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Safari\//.test(ua)) browser = 'Safari';
+  return `${os} ${browser}`;
+}
+
 async function setupPush() {
   if (!WORKER_URL) { console.warn('WORKER_URL 未設定'); return; }
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) { console.warn('不支援 Web Push'); return; }
@@ -519,7 +537,7 @@ async function setupPush() {
     });
     const subRes = await fetch(`${WORKER_URL}/api/subscribe`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, subscription: pushSubscription.toJSON() })
+      body: JSON.stringify({ userId, subscription: pushSubscription.toJSON(), deviceLabel: getDeviceLabel() })
     });
     const subData = await subRes.json();
     console.log('✅ Web Push 訂閱成功', subData);
