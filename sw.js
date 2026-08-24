@@ -57,14 +57,16 @@ self.addEventListener('push', event => {
     if (event.data) data.body = event.data.text();
   }
 
+  // 圖示一律用完整網址，避免 iOS Safari 因圖示路徑錯誤（404）而整個通知不顯示
+  const iconUrl = new URL('icon-192.png', self.registration.scope).href;
   const options = {
     body: data.body || '',
-    icon: data.icon || '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: data.icon || iconUrl,
+    badge: iconUrl,
     vibrate: [200, 100, 200],
     tag: data.tag || 'cal-reminder',
     requireInteraction: true,   // 通知停留到使用者互動（不自動消失）
-    data: { url: data.url || '/' }
+    data: { url: data.url || self.registration.scope }
   };
 
   event.waitUntil(
