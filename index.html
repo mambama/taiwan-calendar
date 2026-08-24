@@ -512,6 +512,10 @@ function getDeviceLabel(){
   else if (/iPad/.test(ua)) os = 'iPad';
   else if (/Android/.test(ua)) os = 'Android';
   else if (/Windows/.test(ua)) os = 'Windows';
+  // iOS 部分版本因隱私保護會把 UA 簡化成類似桌面 Mac 的字串，
+  // 但仍會保留 Mobile 標記或多點觸控，用這兩個線索判斷回真實裝置
+  else if (/Macintosh/.test(ua) && (navigator.maxTouchPoints > 1 || /Mobile/.test(ua))) os = 'iPhone/iPad';
+  else if (/Mobile/.test(ua)) os = 'iPhone';
   else if (/Macintosh/.test(ua)) os = 'Mac';
   let browser = '瀏覽器';
   if (/Edg\//.test(ua)) browser = 'Edge';
@@ -562,6 +566,17 @@ async function cancelWebPush(scheduleId) {
     await fetch(`${WORKER_URL}/api/cancel`, {
       method: 'DELETE', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ scheduleId })
+    });
+  } catch(e) {}
+}
+
+// 依 tag 取消排程（刪除事件/待辦時用，不管排程 ID 格式新舊都能清乾淨）
+async function cancelWebPushByTag(tag) {
+  if (!WORKER_URL || !userId) return;
+  try {
+    await fetch(`${WORKER_URL}/api/cancel-tag`, {
+      method: 'DELETE', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId, tag })
     });
   } catch(e) {}
 }
@@ -861,8 +876,10 @@ function setEvtReminder(ev,dk,minsBefore,label,date){
   const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
   // 本地通知（App 開著時，iOS/Android 相容）
   scheduleNotif(nkey,'行事曆提醒',body,ms);
-  // Web Push（App 關閉時）
-  const schedId=`${nkey}-${sendAt}`;
+  // Web Push（App 關閉時）── schedId 統一帶裝置前綴，跟同步後重新註冊時的格式一致，
+  // 避免每次同步都多開一筆重複排程（導致同一提醒收到兩次通知）
+  const devPrefix=userId?userId.slice(0,8):'dev';
+  const schedId=`${devPrefix}-${nkey}-${sendAt}`;
   cancelWebPush(schedId);
   if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
   ev.remindLabel=label;return true;
@@ -881,8 +898,9 @@ function setTodoReminder(t, minsFromNow, label){
       try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
       renderTodos();renderMonthList();}
   });
-  // Web Push
-  const schedId=`${nkey}-${sendAt}`;
+  // Web Push（schedId 統一帶裝置前綴，避免同步後重複排程）
+  const devPrefix=userId?userId.slice(0,8):'dev';
+  const schedId=`${devPrefix}-${nkey}-${sendAt}`;
   cancelWebPush(schedId);
   scheduleWebPush(schedId,`待辦：${t.text}`,sendAt,nkey);
   t._pushSchedId=schedId;
@@ -976,7 +994,7 @@ function renderEventPanel(){
         activeLabel:ev.remindLabel,nowMode:false,
         onPreset:(mins,label)=>{
           if(mins===null){
-            if(origIdx>=0){origEvts[origIdx].remindLabel=undefined;const nkey=`evt-${dk}-${origEvts[origIdx].title}`;if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}}
+            if(origIdx>=0){origEvts[origIdx].remindLabel=undefined;const nkey=`evt-${dk}-${origEvts[origIdx].title}`;if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}cancelWebPushByTag(nkey);}
             localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList();
           }else{
             if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList()}
@@ -1053,7 +1071,14 @@ function renderEventPanel(){
       item.appendChild(bar);
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel()});
       bar.querySelector('.save-btn2').addEventListener('click',()=>{
-        if(origIdx>=0)origEvts.splice(origIdx,1);
+        if(origIdx>=0){
+          if(origEvts[origIdx].remindLabel){
+            const nk=`evt-${dk}-${origEvts[origIdx].title}`;
+            if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}
+            cancelWebPushByTag(nk);
+          }
+          origEvts.splice(origIdx,1);
+        }
         localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar();
       });
     }
@@ -1100,7 +1125,7 @@ function renderTodos(){
         onPreset:(mins,label)=>{
           const idx=todos.findIndex(x=>x.id===t.id);
           if(mins===null){
-            if(idx>=0){const nk=`todo-${todos[idx].id}`;if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;}
+            if(idx>=0){const nk=`todo-${todos[idx].id}`;if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}cancelWebPushByTag(nk);todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;}
             expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList();
           }else if(idx>=0&&setTodoReminder(todos[idx],mins,label)){expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList()}
         }
@@ -1140,7 +1165,7 @@ function renderTodos(){
       main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(mode==='edit')?{id:t.id,mode:null}:{id:t.id,mode:'edit'};renderTodos()});
       main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(mode==='remind')?{id:t.id,mode:null}:{id:t.id,mode:'remind'};renderTodos()});
       main.querySelector('.ic-btn.del').addEventListener('click',()=>{
-        if(t._pushSchedId) cancelWebPush(t._pushSchedId);
+        if(t.remindLabel) cancelWebPushByTag(`todo-${t.id}`);
         if(scheduledNotifs[`todo-${t.id}`]) clearTimeout(scheduledNotifs[`todo-${t.id}`]);
         todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
       });
