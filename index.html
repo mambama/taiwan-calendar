@@ -683,23 +683,24 @@ async function rescheduleAllReminders(){
   remindersRescheduled=true;
   const now=Date.now();
   const minFuture=60*1000; // 至少 1 分鐘後才排程
-  Object.entries(localEvents).forEach(([dk,evts])=>{
+  // 依序等待送出（避免同時發出多個請求造成伺服器端競爭寫入、互相覆蓋）
+  for(const [dk,evts] of Object.entries(localEvents)){
     const date=parseDKey(dk);
-    evts.forEach(ev=>{
-      if(!ev.remindLabel) return;
+    for(const ev of evts){
+      if(!ev.remindLabel) continue;
       const sendAt=calcSendAt(ev.remindLabel,date,ev.time);
-      if(!sendAt||sendAt<=now+minFuture) return;
+      if(!sendAt||sendAt<=now+minFuture) continue;
       const nkey=`evt-${dk}-${ev.title}`;
       const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
       const ms=sendAt-now;
       scheduleNotif(nkey,'曼巴行事曆提醒',body,ms);
       const devPrefix=userId?userId.slice(0,8):'dev';
       const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-      scheduleWebPush(schedId,body,sendAt,nkey);
-    });
-  });
-  todos.forEach(t=>{
-    if(!t.remindAt||t.remindAt<=now+minFuture) return;
+      await scheduleWebPush(schedId,body,sendAt,nkey);
+    }
+  }
+  for(const t of todos){
+    if(!t.remindAt||t.remindAt<=now+minFuture) continue;
     const nkey=`todo-${t.id}`;
     const ms=t.remindAt-now;
     const tRef=t;
@@ -711,8 +712,8 @@ async function rescheduleAllReminders(){
     });
     const devPrefix=userId?userId.slice(0,8):'dev';
     const schedId=`${devPrefix}-${nkey}-${t.remindAt}`;
-    scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt,nkey);
-  });
+    await scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt,nkey);
+  }
 }
 
 function getRepeatLabel(repeat){
