@@ -541,7 +541,7 @@ async function setupPush() {
     });
     const subRes = await fetch(`${WORKER_URL}/api/subscribe`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, subscription: pushSubscription.toJSON(), deviceLabel: getDeviceLabel() })
+      body: JSON.stringify({ userId, subscription: pushSubscription.toJSON(), deviceLabel: getDeviceLabel(), syncCode: syncCode||undefined })
     });
     const subData = await subRes.json();
     console.log('✅ Web Push 訂閱成功', subData);
@@ -553,7 +553,7 @@ async function scheduleWebPush(scheduleId, body, sendAt, tag) {
   try {
     const res = await fetch(`${WORKER_URL}/api/schedule`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt, tag: tag || scheduleId })
+      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt, tag: tag || scheduleId, syncCode: syncCode||undefined })
     });
     const data = await res.json();
     console.log(`📅 排程推播 [${scheduleId}]`, data, '時間:', new Date(sendAt).toLocaleString('zh-TW'));
@@ -576,7 +576,7 @@ async function cancelWebPushByTag(tag) {
   try {
     await fetch(`${WORKER_URL}/api/cancel-tag`, {
       method: 'DELETE', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, tag })
+      body: JSON.stringify({ userId, tag, syncCode: syncCode||undefined })
     });
   } catch(e) {}
 }
