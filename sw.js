@@ -1,5 +1,5 @@
 // 台灣行事曆 Service Worker v2 — 含 Web Push 支援
-const CACHE_NAME = 'tw-calendar-v3';
+const CACHE_NAME = 'tw-calendar-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -39,6 +39,21 @@ self.addEventListener('fetch', event => {
           return res;
         })
         .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // App 本體頁面：一律先嘗試連網抓最新版，離線才退回快取
+  // （避免 index.html 改版後，只有 sw.js 沒變就完全抓不到新版的問題）
+  const isAppShell = event.request.mode === 'navigate' || event.request.url.endsWith('/index.html');
+  if (isAppShell) {
+    event.respondWith(
+      fetch(event.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
