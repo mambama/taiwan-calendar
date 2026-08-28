@@ -1051,8 +1051,11 @@ function renderEventPanel(){
         const newTime=timeInp.value||undefined;
         if(origIdx>=0){
           origEvts[origIdx]={...origEvts[origIdx],time:newTime};
-          // 事件時間變了，把現有的每筆提醒都依新時間重新排程
-          (origEvts[origIdx].reminders||[]).forEach(r=>syncEvtReminder(origEvts[origIdx],dk,selectedDate,r));
+          // 事件時間變了，把現有的每筆提醒都依新時間重新排程；「當天 HH:MM」這種標籤文字也要跟著更新，不然畫面看起來像沒反應
+          (origEvts[origIdx].reminders||[]).forEach(r=>{
+            if(r.label.startsWith('當天')) r.label=`當天 ${newTime||'00:00'}`;
+            syncEvtReminder(origEvts[origIdx],dk,selectedDate,r);
+          });
           localEvents[dk]=origEvts;
         }
         saveEvents();renderEventPanel();renderCalendar();
