@@ -1068,8 +1068,9 @@ function renderEventPanel(){
         if(origIdx>=0){
           origEvts[origIdx]={...origEvts[origIdx],time:newTime};
           // 事件時間變了，把現有的每筆提醒都依新時間重新排程；「當天 HH:MM」這種標籤文字也要跟著更新，不然畫面看起來像沒反應
+          // （指定日期時間的提醒跟事件時間無關，label 不用跟著改）
           (origEvts[origIdx].reminders||[]).forEach(r=>{
-            if(r.label.startsWith('當天')) r.label=`當天 ${newTime||'00:00'}`;
+            if(!r.remindAt&&r.label.startsWith('當天')) r.label=`當天 ${newTime||'00:00'}`;
             syncEvtReminder(origEvts[origIdx],dk,selectedDate,r);
           });
           localEvents[dk]=origEvts;
@@ -1097,13 +1098,18 @@ function renderEventPanel(){
       dtInp.type='datetime-local';
       dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
       dtInp.min=dtNow.toISOString().slice(0,16);
+      // 最晚只能選到事件當天，超過的話應該直接去那天設定提醒
+      const dtMax=new Date(selectedDate);dtMax.setHours(23,59,0,0);
+      dtInp.max=new Date(dtMax-dtMax.getTimezoneOffset()*60000).toISOString().slice(0,16);
       const dtBtn=document.createElement('button');
       dtBtn.textContent='指定時間';dtBtn.style.cssText='font-size:13px;font-weight:700;padding:7px 12px;border:none;border-radius:10px;background:#F59E0B;color:#fff;cursor:pointer;white-space:nowrap';
       dtBtn.addEventListener('click',()=>{
         if(!dtInp.value){alert('請選擇時間');return}
         const d=new Date(dtInp.value);
         if(d<=Date.now()){alert('請選擇未來的時間');return}
-        const label=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+        if(d.toDateString()>dtMax.toDateString()){alert('最晚只能選到事件當天，超過的話請直接到那天設定提醒');return}
+        const sameDay=d.toDateString()===selectedDate.toDateString();
+        const label=sameDay?`當天 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`:`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
         if(origIdx>=0&&addEvtReminderAbsolute(origEvts[origIdx],dk,d.getTime(),label)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:'remind'};renderEventPanel();renderMonthList()}
       });
       dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
