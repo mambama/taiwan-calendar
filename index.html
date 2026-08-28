@@ -471,6 +471,7 @@ async function syncFromCloud(manual=false){
       localEvents = cloudEvents;
       todos = cloudTodos;
       nextId = todos.reduce((m,t)=>Math.max(m,t.id), 0) + 1;
+      migrateReminders();
       cloudUpdatedAt = data.updatedAt;
       try{ localStorage.setItem('cal_events', JSON.stringify(localEvents)); }catch(e){}
       try{ localStorage.setItem('cal_todos', JSON.stringify(todos)); }catch(e){}
@@ -620,6 +621,26 @@ function loadStorage(){
   try{const r=localStorage.getItem('cal_events');if(r)localEvents=JSON.parse(r)}catch(e){}
   try{const r=localStorage.getItem('cal_todos');if(r){todos=JSON.parse(r);nextId=todos.reduce((m,t)=>Math.max(m,t.id),0)+1}}catch(e){}
   // 無預設待辦，從空白開始
+  migrateReminders();
+}
+
+// 產生提醒項目的短 ID
+function genRid(){return 'r'+Math.random().toString(36).slice(2,8)}
+
+// 舊資料相容：把單一 remindLabel/remindAt 轉成 reminders 陣列（可存多筆提醒）
+function migrateReminders(){
+  Object.values(localEvents).forEach(evts=>{
+    evts.forEach(ev=>{
+      if(ev.remindLabel&&!ev.reminders) ev.reminders=[{id:genRid(),label:ev.remindLabel}];
+      delete ev.remindLabel;
+      if(!ev.reminders) ev.reminders=[];
+    });
+  });
+  todos.forEach(t=>{
+    if(t.remindLabel&&!t.reminders) t.reminders=[{id:genRid(),label:t.remindLabel,remindAt:t.remindAt}];
+    delete t.remindLabel;delete t.remindAt;delete t._pushSchedId;
+    if(!t.reminders) t.reminders=[];
+  });
 }
 
 function exportData(){
@@ -720,32 +741,37 @@ async function rescheduleAllReminders(){
   for(const [dk,evts] of Object.entries(localEvents)){
     const date=parseDKey(dk);
     for(const ev of evts){
-      if(!ev.remindLabel) continue;
-      const sendAt=calcSendAt(ev.remindLabel,date,ev.time);
-      if(!sendAt||sendAt<=now+minFuture) continue;
-      const nkey=`evt-${dk}-${ev.title}`;
-      const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
-      const ms=sendAt-now;
-      scheduleNotif(nkey,'曼巴行事曆提醒',body,ms);
-      const devPrefix=userId?userId.slice(0,8):'dev';
-      const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-      await scheduleWebPush(schedId,body,sendAt,nkey);
+      if(!ev.reminders||!ev.reminders.length) continue;
+      for(const r of ev.reminders){
+        const sendAt=calcSendAt(r.label,date,ev.time);
+        if(!sendAt||sendAt<=now+minFuture) continue;
+        const nkey=`evt-${dk}-${ev.title}-${r.id}`;
+        const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
+        const ms=sendAt-now;
+        scheduleNotif(nkey,'曼巴行事曆提醒',body,ms);
+        const devPrefix=userId?userId.slice(0,8):'dev';
+        const schedId=`${devPrefix}-${nkey}-${sendAt}`;
+        await scheduleWebPush(schedId,body,sendAt,nkey);
+      }
     }
   }
   for(const t of todos){
-    if(!t.remindAt||t.remindAt<=now+minFuture) continue;
-    const nkey=`todo-${t.id}`;
-    const ms=t.remindAt-now;
-    const tRef=t;
-    scheduleNotif(nkey,'待辦提醒',t.text,ms,()=>{
-      const idx=todos.findIndex(x=>x.id===tRef.id);
-      if(idx>=0){todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;
-        try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
-        renderTodos();renderMonthList();}
-    });
-    const devPrefix=userId?userId.slice(0,8):'dev';
-    const schedId=`${devPrefix}-${nkey}-${t.remindAt}`;
-    await scheduleWebPush(schedId,`待辦：${t.text}`,t.remindAt,nkey);
+    if(!t.reminders||!t.reminders.length) continue;
+    for(const r of t.reminders){
+      if(!r.remindAt||r.remindAt<=now+minFuture) continue;
+      const nkey=`todo-${t.id}-${r.id}`;
+      const ms=r.remindAt-now;
+      const tRef=t,rid=r.id;
+      scheduleNotif(nkey,'待辦提醒',t.text,ms,()=>{
+        const idx=todos.findIndex(x=>x.id===tRef.id);
+        if(idx>=0){todos[idx].reminders=(todos[idx].reminders||[]).filter(rr=>rr.id!==rid);
+          try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+          renderTodos();renderMonthList();}
+      });
+      const devPrefix=userId?userId.slice(0,8):'dev';
+      const schedId=`${devPrefix}-${nkey}-${r.remindAt}`;
+      await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey);
+    }
   }
 }
 
@@ -835,17 +861,36 @@ function addDay(grid,date,other){
 }
 
 // ── 提醒 popup ─────────────────────────────────────────
-function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
+function buildRemindPopup({reminders=[],presets,nowMode=false,onAdd,onRemove}){
   const pop=document.createElement('div');pop.className='reminder-popup';
+  // 目前已設定的提醒（可疊加多筆，各自可移除）
+  if(reminders.length){
+    const list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:5px;padding:0 0 8px';
+    reminders.forEach(r=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;background:var(--bg2);border-radius:9px;padding:6px 10px';
+      const lbl=document.createElement('span');lbl.textContent='🔔 '+r.label;
+      lbl.style.cssText='flex:1;font-size:13px;font-weight:600;color:var(--tx)';
+      const rmBtn=document.createElement('button');rmBtn.textContent='✕';
+      rmBtn.style.cssText='border:none;background:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1';
+      rmBtn.addEventListener('click',()=>onRemove(r.id));
+      row.appendChild(lbl);row.appendChild(rmBtn);
+      list.appendChild(row);
+    });
+    pop.appendChild(list);
+  }else{
+    const empty=document.createElement('div');empty.textContent='尚未設定提醒';
+    empty.style.cssText='font-size:12px;color:var(--tx3);padding:2px 0 8px';
+    pop.appendChild(empty);
+  }
   const grid=document.createElement('div');grid.className='reminder-grid';
   presets.forEach(p=>{
     const btn=document.createElement('button');
-    const isActive=p.key==='none'?(!activeLabel):activeLabel===p.label;
-    btn.className='rem-opt'+(nowMode?' now-style':'')+(isActive?' active':'');
+    btn.className='rem-opt'+(nowMode?' now-style':'');
     btn.textContent=p.label;
     btn.addEventListener('click',()=>{
       if(p.key==='cu'){const cr=pop.querySelector('.custom-remind-row');cr.style.display=cr.style.display==='none'?'flex':'none';return}
-      onPreset(p.mins,p.label);
+      onAdd(p.mins,p.label);
     });
     grid.appendChild(btn);
   });
@@ -855,56 +900,86 @@ function buildRemindPopup({presets,activeLabel,nowMode=false,onPreset}){
   const unitSel=document.createElement('select');
   const units=nowMode?[['m','分鐘後'],['h','小時後'],['d','天後']]:[['d','天前'],['w','週前'],['mo','月前']];
   units.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;unitSel.appendChild(o)});
-  const setBtn=document.createElement('button');setBtn.className='set-rem-btn'+(nowMode?' orange':'');setBtn.textContent='設定';
+  const setBtn=document.createElement('button');setBtn.className='set-rem-btn'+(nowMode?' orange':'');setBtn.textContent='新增';
   setBtn.addEventListener('click',()=>{
     const val=parseInt(numInp.value)||1,unit=unitSel.value;
     const minsMap={m:val,h:val*60,d:val*60*24,w:val*60*24*7,mo:val*60*24*30};
     const labelMap={m:`${val}分鐘`,h:`${val}小時`,d:`${val}天`,w:`${val}週`,mo:`${val}個月`};
-    onPreset(minsMap[unit],labelMap[unit]+(nowMode?'後':'前'));
+    onAdd(minsMap[unit],labelMap[unit]+(nowMode?'後':'前'));
   });
   cr.appendChild(numInp);cr.appendChild(unitSel);cr.appendChild(setBtn);
   pop.appendChild(cr);
   return pop;
 }
-function setEvtReminder(ev,dk,minsBefore,label,date){
+// 新增一筆事件提醒（可疊加，不會蓋掉舊的）
+function addEvtReminder(ev,dk,minsBefore,label,date){
   if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
+  const rid=genRid();
   const[h,m]=(ev.time||'00:00').split(':').map(Number);
   const base=new Date(date);base.setHours(h,m,0,0);
   const sendAt=base-minsBefore*60000;
   const ms=sendAt-Date.now();
-  const nkey=`evt-${dk}-${ev.title}`;
+  const nkey=`evt-${dk}-${ev.title}-${rid}`;
   const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
   // 本地通知（App 開著時，iOS/Android 相容）
   scheduleNotif(nkey,'行事曆提醒',body,ms);
-  // Web Push（App 關閉時）── schedId 統一帶裝置前綴，跟同步後重新註冊時的格式一致，
-  // 避免每次同步都多開一筆重複排程（導致同一提醒收到兩次通知）
+  // Web Push（App 關閉時）── schedId 統一帶裝置前綴+提醒自己的 ID，跟同步後重新註冊時的格式一致，
+  // 避免每次同步都多開一筆重複排程，也讓每筆提醒的排程互相獨立
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-  cancelWebPush(schedId);
   if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
-  ev.remindLabel=label;return true;
+  if(!ev.reminders) ev.reminders=[];
+  ev.reminders.push({id:rid,label});
+  return true;
 }
-function setTodoReminder(t, minsFromNow, label){
+// 移除單一提醒
+function removeEvtReminder(ev,dk,rid){
+  const nkey=`evt-${dk}-${ev.title}-${rid}`;
+  if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
+  cancelWebPushByTag(nkey);
+  ev.reminders=(ev.reminders||[]).filter(r=>r.id!==rid);
+}
+// 事件時間變動時，重新計算單一提醒的觸發時間並重新排程
+function syncEvtReminder(ev,dk,date,reminder){
+  if(notifPermission!=='granted') return;
+  const sendAt=calcSendAt(reminder.label,date,ev.time);
+  if(!sendAt) return;
+  const ms=sendAt-Date.now();
+  const nkey=`evt-${dk}-${ev.title}-${reminder.id}`;
+  const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
+  scheduleNotif(nkey,'行事曆提醒',body,ms);
+  const devPrefix=userId?userId.slice(0,8):'dev';
+  const schedId=`${devPrefix}-${nkey}-${sendAt}`;
+  if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
+}
+// 新增一筆待辦提醒（可疊加）
+function addTodoReminder(t, minsFromNow, label){
   if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
-  const nkey=`todo-${t.id}`;
+  const rid=genRid();
   const ms=minsFromNow*60000;
   const sendAt=Date.now()+ms;
-  t.remindAt=sendAt;
-  t.remindLabel=label;
-  // 本地通知：時間到後自動清除提醒標籤
+  const nkey=`todo-${t.id}-${rid}`;
+  // 本地通知：時間到後自動移除這筆提醒
   scheduleNotif(nkey,'待辦提醒',t.text,ms,()=>{
     const idx=todos.findIndex(x=>x.id===t.id);
-    if(idx>=0){todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;
+    if(idx>=0){todos[idx].reminders=(todos[idx].reminders||[]).filter(r=>r.id!==rid);
       try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
       renderTodos();renderMonthList();}
   });
   // Web Push（schedId 統一帶裝置前綴，避免同步後重複排程）
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-  cancelWebPush(schedId);
   scheduleWebPush(schedId,`待辦：${t.text}`,sendAt,nkey);
-  t._pushSchedId=schedId;
+  if(!t.reminders) t.reminders=[];
+  t.reminders.push({id:rid,label,remindAt:sendAt});
   return true;
+}
+// 移除單一待辦提醒
+function removeTodoReminder(t,rid){
+  const nkey=`todo-${t.id}-${rid}`;
+  if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
+  cancelWebPushByTag(nkey);
+  t.reminders=(t.reminders||[]).filter(r=>r.id!==rid);
 }
 
 // ── 事件面板 ──────────────────────────────────────────
@@ -929,9 +1004,10 @@ function renderEventPanel(){
     const mode=isExp?expandedEvt.mode:null;
     const item=document.createElement('div');item.className='event-item';
     const main=document.createElement('div');main.className='event-main';main.style.cursor='pointer';
-    const remBadge=ev.remindLabel?`<span class="remind-badge">🔔 ${ev.remindLabel}</span>`:'';
+    const evReminders=ev.reminders||[];
+    const remBadge=evReminders.length?(evReminders.length===1?`<span class="remind-badge">🔔 ${evReminders[0].label}</span>`:`<span class="remind-badge">🔔 ${evReminders.length} 個提醒</span>`):'';
     const repBadge=ev.repeat?`<span class="repeat-badge">${getRepeatLabel(ev.repeat)}</span>`:'';
-    const timeBadge=(ev.time&&!ev.remindLabel)?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
+    const timeBadge=(ev.time&&!evReminders.length)?`<span class="time-badge">🕐 ${ev.time}</span>`:'';
     // 只有選中時才顯示操作按鈕
     const actionsHtml=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
@@ -975,14 +1051,8 @@ function renderEventPanel(){
         const newTime=timeInp.value||undefined;
         if(origIdx>=0){
           origEvts[origIdx]={...origEvts[origIdx],time:newTime};
-          // 同步更新提醒 label
-          if(origEvts[origIdx].remindLabel&&origEvts[origIdx].remindLabel.startsWith('當天')){
-            origEvts[origIdx].remindLabel=newTime?`當天 ${newTime}`:'當天 00:00';
-            setEvtReminder(origEvts[origIdx],dk,0,origEvts[origIdx].remindLabel,selectedDate);
-          } else if(origEvts[origIdx].remindLabel){
-            const mc=origEvts[origIdx].remindLabel.match(/^(\d+)\s*(分鐘|小時|天|週|個月)前$/);
-            if(mc){const n=parseInt(mc[1]),u=mc[2];const um={'分鐘':1,'小時':60,'天':60*24,'週':60*24*7,'個月':60*24*30};setEvtReminder(origEvts[origIdx],dk,n*um[u],origEvts[origIdx].remindLabel,selectedDate);}
-          }
+          // 事件時間變了，把現有的每筆提醒都依新時間重新排程
+          (origEvts[origIdx].reminders||[]).forEach(r=>syncEvtReminder(origEvts[origIdx],dk,selectedDate,r));
           localEvents[dk]=origEvts;
         }
         saveEvents();renderEventPanel();renderCalendar();
@@ -990,15 +1060,14 @@ function renderEventPanel(){
       timeRow.appendChild(timeLbl);timeRow.appendChild(timeInp);timeRow.appendChild(timeSetBtn);
       wrap.appendChild(timeRow);
       wrap.appendChild(buildRemindPopup({
-        presets:[{key:'none',label:'不提醒',mins:null},{key:'1d',label:'1天前',mins:60*24},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
-        activeLabel:ev.remindLabel,nowMode:false,
-        onPreset:(mins,label)=>{
-          if(mins===null){
-            if(origIdx>=0){origEvts[origIdx].remindLabel=undefined;const nkey=`evt-${dk}-${origEvts[origIdx].title}`;if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}cancelWebPushByTag(nkey);}
-            localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList();
-          }else{
-            if(origIdx>=0&&setEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel();renderMonthList()}
-          }
+        reminders:evReminders,
+        presets:[{key:'1d',label:'1天前',mins:60*24},{key:'3d',label:'3天前',mins:60*24*3},{key:'cu',label:'自訂'}],
+        nowMode:false,
+        onAdd:(mins,label)=>{
+          if(origIdx>=0&&addEvtReminder(origEvts[origIdx],dk,mins,label,selectedDate)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:'remind'};renderEventPanel();renderMonthList()}
+        },
+        onRemove:(rid)=>{
+          if(origIdx>=0){removeEvtReminder(origEvts[origIdx],dk,rid);localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:'remind'};renderEventPanel();renderMonthList();}
         }
       }));
       item.appendChild(wrap);
@@ -1072,11 +1141,7 @@ function renderEventPanel(){
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel()});
       bar.querySelector('.save-btn2').addEventListener('click',()=>{
         if(origIdx>=0){
-          if(origEvts[origIdx].remindLabel){
-            const nk=`evt-${dk}-${origEvts[origIdx].title}`;
-            if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}
-            cancelWebPushByTag(nk);
-          }
+          (origEvts[origIdx].reminders||[]).forEach(r=>removeEvtReminder(origEvts[origIdx],dk,r.id));
           origEvts.splice(origIdx,1);
         }
         localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar();
@@ -1100,7 +1165,8 @@ function renderTodos(){
     const isExp=expandedTodo&&expandedTodo.id===t.id,mode=isExp?expandedTodo.mode:null;
     const item=document.createElement('div');item.className='todo-item';
     const main=document.createElement('div');main.className='todo-main';main.style.cursor='pointer';
-    const badge=t.remindLabel?`<span class="remind-badge now">⏰ ${t.remindLabel}</span>`:'';
+    const tReminders=t.reminders||[];
+    const badge=tReminders.length?(tReminders.length===1?`<span class="remind-badge now">⏰ ${tReminders[0].label}</span>`:`<span class="remind-badge now">⏰ ${tReminders.length} 個提醒</span>`):'';
     const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">⏰</button>
@@ -1120,14 +1186,16 @@ function renderTodos(){
     }
     if(mode==='remind'){
       item.appendChild(buildRemindPopup({
-        presets:[{key:'none',label:'不提醒',mins:null},{key:'10m',label:'10分鐘後',mins:10},{key:'30m',label:'30分鐘後',mins:30},{key:'1h',label:'1小時後',mins:60},{key:'cu',label:'自訂'}],
-        activeLabel:t.remindLabel,nowMode:true,
-        onPreset:(mins,label)=>{
+        reminders:tReminders,
+        presets:[{key:'10m',label:'10分鐘後',mins:10},{key:'30m',label:'30分鐘後',mins:30},{key:'1h',label:'1小時後',mins:60},{key:'cu',label:'自訂'}],
+        nowMode:true,
+        onAdd:(mins,label)=>{
           const idx=todos.findIndex(x=>x.id===t.id);
-          if(mins===null){
-            if(idx>=0){const nk=`todo-${todos[idx].id}`;if(scheduledNotifs[nk]){clearTimeout(scheduledNotifs[nk]);delete scheduledNotifs[nk]}cancelWebPushByTag(nk);todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;}
-            expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList();
-          }else if(idx>=0&&setTodoReminder(todos[idx],mins,label)){expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList()}
+          if(idx>=0&&addTodoReminder(todos[idx],mins,label)){expandedTodo={id:t.id,mode:'remind'};saveTodos();renderTodos();renderMonthList()}
+        },
+        onRemove:(rid)=>{
+          const idx=todos.findIndex(x=>x.id===t.id);
+          if(idx>=0){removeTodoReminder(todos[idx],rid);expandedTodo={id:t.id,mode:'remind'};saveTodos();renderTodos();renderMonthList();}
         }
       }));
       // 指定時間列
@@ -1138,9 +1206,6 @@ function renderTodos(){
       dtInp.type='datetime-local';
       dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
       dtInp.min=now2.toISOString().slice(0,16);
-      if(t.remindAt&&t.remindAt>Date.now()){
-        const d=new Date(t.remindAt);dtInp.value=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-      }
       const dtBtn=document.createElement('button');
       dtBtn.textContent='指定時間';dtBtn.style.cssText='font-size:13px;font-weight:700;padding:7px 12px;border:none;border-radius:10px;background:#F59E0B;color:#fff;cursor:pointer;white-space:nowrap';
       dtBtn.addEventListener('click',()=>{
@@ -1149,7 +1214,7 @@ function renderTodos(){
         if(minsFromNow<=0){alert('請選擇未來的時間');return}
         const label=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
         const idx=todos.findIndex(x=>x.id===t.id);
-        if(idx>=0&&setTodoReminder(todos[idx],minsFromNow,label)){expandedTodo={id:t.id,mode:null};saveTodos();renderTodos();renderMonthList()}
+        if(idx>=0&&addTodoReminder(todos[idx],minsFromNow,label)){expandedTodo={id:t.id,mode:'remind'};saveTodos();renderTodos();renderMonthList()}
       });
       dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
       item.appendChild(dtRow);
@@ -1165,8 +1230,7 @@ function renderTodos(){
       main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(mode==='edit')?{id:t.id,mode:null}:{id:t.id,mode:'edit'};renderTodos()});
       main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(mode==='remind')?{id:t.id,mode:null}:{id:t.id,mode:'remind'};renderTodos()});
       main.querySelector('.ic-btn.del').addEventListener('click',()=>{
-        if(t.remindLabel) cancelWebPushByTag(`todo-${t.id}`);
-        if(scheduledNotifs[`todo-${t.id}`]) clearTimeout(scheduledNotifs[`todo-${t.id}`]);
+        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
         todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
       });
     }
@@ -1194,7 +1258,9 @@ function renderMonthList(){
       evts.forEach(ev=>{
         const row=document.createElement('div');row.className='list-evt';
         const repTxt=ev.repeat?`<span style="font-size:10px;color:#0F6E56;background:#E1F5EE;padding:1px 5px;border-radius:8px;font-weight:600">${getRepeatLabel(ev.repeat)}</span>`:'';
-        row.innerHTML=`<div class="list-evt-dot${ev._recurring?' style="background:#1D9E75"':''}"></div><span class="list-evt-text">${ev.title}</span>${repTxt}${ev.remindLabel?`<span class="list-evt-remind">🔔 ${ev.remindLabel}</span>`:''}<span class="list-evt-arrow">›</span>`;
+        const evRems=ev.reminders||[];
+        const evRemTxt=evRems.length?(evRems.length===1?`<span class="list-evt-remind">🔔 ${evRems[0].label}</span>`:`<span class="list-evt-remind">🔔 ${evRems.length} 個提醒</span>`):'';
+        row.innerHTML=`<div class="list-evt-dot${ev._recurring?' style="background:#1D9E75"':''}"></div><span class="list-evt-text">${ev.title}</span>${repTxt}${evRemTxt}<span class="list-evt-arrow">›</span>`;
         row.addEventListener('click',()=>{selectedDate=date;expandedEvt=null;toggleList(false);switchTab('events');renderCalendar();renderEventPanel()});
         group.appendChild(row);
       });
@@ -1207,9 +1273,11 @@ function renderMonthList(){
     if(!todos.length){container.innerHTML='<div class="list-empty">沒有待辦事項</div>';return}
     const renderRow=t=>{
       const row=document.createElement('div');row.className='list-todo';
+      const tRems=t.reminders||[];
+      const tRemTxt=tRems.length?(tRems.length===1?`<span class="list-todo-remind">⏰ ${tRems[0].label}</span>`:`<span class="list-todo-remind">⏰ ${tRems.length} 個提醒</span>`):'';
       row.innerHTML=`<div class="list-todo-cb${t.done?' done':''}" data-id="${t.id}">${t.done?'✓':''}</div>
         <span class="list-todo-text${t.done?' done':''}">${t.text}</span>
-        ${t.remindLabel?`<span class="list-todo-remind">⏰ ${t.remindLabel}</span>`:''}`;
+        ${tRemTxt}`;
       row.querySelector('.list-todo-cb').addEventListener('click',()=>{todos=todos.map(x=>x.id===t.id?{...x,done:!x.done}:x);saveTodos();renderMonthList()});
       container.appendChild(row);
     };
@@ -1342,15 +1410,9 @@ document.getElementById('add-evt-btn').addEventListener('click',()=>{if(!selecte
   localEvents[dk]=[...(localEvents[dk]||[]),entry];
   // 預設提醒：若有填時間則以該時間為基準，否則當天 00:00
   const newEvt=localEvents[dk][localEvents[dk].length-1];
-  const[rh,rm]=(newEvt.time||'00:00').split(':').map(Number);
-  const base=new Date(selectedDate);base.setHours(rh,rm,0,0);
-  const ms=base-Date.now();
-  newEvt.remindLabel=newEvt.time?`當天 ${newEvt.time}`:'當天 00:00';
+  const label=newEvt.time?`當天 ${newEvt.time}`:'當天 00:00';
   if(notifPermission==='granted'){
-    const nkey=`evt-${dk}-${newEvt.title}`;
-    const body=newEvt.time?`${newEvt.time} ${newEvt.title}`:newEvt.title;
-    scheduleNotif(nkey,'行事曆提醒',body,ms);
-    if(ms>0) scheduleWebPush(`${nkey}-${base.getTime()}`,body,base.getTime(),nkey);
+    addEvtReminder(newEvt,dk,0,label,selectedDate);
   }
   inp.value='';expandedEvt=null;saveEvents();renderEventPanel();renderCalendar()});
 document.getElementById('evt-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-evt-btn').click()});
@@ -1438,7 +1500,11 @@ loadStorage();
 // 開啟 App 時清除已過期的待辦提醒標籤
 (function cleanupPastReminders(){
   const now=Date.now();let changed=false;
-  todos.forEach(t=>{if(t.remindAt&&t.remindAt<now){t.remindLabel=undefined;t.remindAt=undefined;changed=true}});
+  todos.forEach(t=>{
+    const before=(t.reminders||[]).length;
+    t.reminders=(t.reminders||[]).filter(r=>!r.remindAt||r.remindAt>=now);
+    if(t.reminders.length!==before)changed=true;
+  });
   if(changed){try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}}
 })();
 
@@ -1456,11 +1522,11 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',e=>{
     if(e.data?.type==='push-fired'){
       const tag=e.data.tag||'';
-      const m=tag.match(/^todo-(\d+)$/);
+      const m=tag.match(/^todo-(\d+)-(.+)$/);
       if(m){
-        const id=parseInt(m[1]);
+        const id=parseInt(m[1]),rid=m[2];
         const idx=todos.findIndex(x=>x.id===id);
-        if(idx>=0){todos[idx].remindLabel=undefined;todos[idx].remindAt=undefined;
+        if(idx>=0){todos[idx].reminders=(todos[idx].reminders||[]).filter(r=>r.id!==rid);
           try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e2){}
           renderTodos();renderMonthList();}
       }
