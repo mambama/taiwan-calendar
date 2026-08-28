@@ -743,7 +743,7 @@ async function rescheduleAllReminders(){
     for(const ev of evts){
       if(!ev.reminders||!ev.reminders.length) continue;
       for(const r of ev.reminders){
-        const sendAt=calcSendAt(r.label,date,ev.time);
+        const sendAt=r.remindAt||calcSendAt(r.label,date,ev.time);
         if(!sendAt||sendAt<=now+minFuture) continue;
         const nkey=`evt-${dk}-${ev.title}-${r.id}`;
         const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
@@ -932,6 +932,21 @@ function addEvtReminder(ev,dk,minsBefore,label,date){
   ev.reminders.push({id:rid,label});
   return true;
 }
+// 新增一筆「指定日期時間」的事件提醒（跟事件本身的日期/時間無關，不會隨事件時間變動重算）
+function addEvtReminderAbsolute(ev,dk,sendAt,label){
+  if(notifPermission!=='granted'){alert('請先開啟通知提醒權限');return false}
+  const rid=genRid();
+  const ms=sendAt-Date.now();
+  const nkey=`evt-${dk}-${ev.title}-${rid}`;
+  const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
+  scheduleNotif(nkey,'行事曆提醒',body,ms);
+  const devPrefix=userId?userId.slice(0,8):'dev';
+  const schedId=`${devPrefix}-${nkey}-${sendAt}`;
+  if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
+  if(!ev.reminders) ev.reminders=[];
+  ev.reminders.push({id:rid,label,remindAt:sendAt});
+  return true;
+}
 // 移除單一提醒
 function removeEvtReminder(ev,dk,rid){
   const nkey=`evt-${dk}-${ev.title}-${rid}`;
@@ -939,9 +954,10 @@ function removeEvtReminder(ev,dk,rid){
   cancelWebPushByTag(nkey);
   ev.reminders=(ev.reminders||[]).filter(r=>r.id!==rid);
 }
-// 事件時間變動時，重新計算單一提醒的觸發時間並重新排程
+// 事件時間變動時，重新計算單一提醒的觸發時間並重新排程（指定日期時間的提醒跟事件時間無關，跳過）
 function syncEvtReminder(ev,dk,date,reminder){
   if(notifPermission!=='granted') return;
+  if(reminder.remindAt) return;
   const sendAt=calcSendAt(reminder.label,date,ev.time);
   if(!sendAt) return;
   const ms=sendAt-Date.now();
@@ -1073,6 +1089,25 @@ function renderEventPanel(){
           if(origIdx>=0){removeEvtReminder(origEvts[origIdx],dk,rid);localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:'remind'};renderEventPanel();renderMonthList();}
         }
       }));
+      // 指定日期時間列（跟事件本身日期無關，可自由挑任意時間點）
+      const dtRow=document.createElement('div');
+      dtRow.style.cssText='display:flex;gap:5px;align-items:center;padding:0 12px 10px';
+      const dtNow=new Date();dtNow.setSeconds(0,0);
+      const dtInp=document.createElement('input');
+      dtInp.type='datetime-local';
+      dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
+      dtInp.min=dtNow.toISOString().slice(0,16);
+      const dtBtn=document.createElement('button');
+      dtBtn.textContent='指定時間';dtBtn.style.cssText='font-size:13px;font-weight:700;padding:7px 12px;border:none;border-radius:10px;background:#F59E0B;color:#fff;cursor:pointer;white-space:nowrap';
+      dtBtn.addEventListener('click',()=>{
+        if(!dtInp.value){alert('請選擇時間');return}
+        const d=new Date(dtInp.value);
+        if(d<=Date.now()){alert('請選擇未來的時間');return}
+        const label=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+        if(origIdx>=0&&addEvtReminderAbsolute(origEvts[origIdx],dk,d.getTime(),label)){localEvents[dk]=origEvts;saveEvents();expandedEvt={dk,idx:origIdx,mode:'remind'};renderEventPanel();renderMonthList()}
+      });
+      dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
+      wrap.appendChild(dtRow);
       item.appendChild(wrap);
     }
     if(mode==='repeat'){
