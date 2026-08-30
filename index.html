@@ -415,6 +415,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
             <option value="week">每週</option>
             <option value="custom">每隔 N 天</option>
             <option value="customweek">每隔 N 週</option>
+            <option value="month">每月（今天這天）</option>
+            <option value="custommonth">每隔 N 月</option>
           </select>
           <select id="routine-dow" style="display:none;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer">
             <option value="1">星期一</option><option value="2">星期二</option><option value="3">星期三</option>
@@ -859,6 +861,10 @@ function matchesRepeat(date,orig,repeat){
 
 // ── 例行公事（重複的待辦）輔助函式 ──────────────────────
 // repeat 格式：'daily' | {unit:'week',dow:0-6} | {unit:'custom',n,anchor} | {unit:'customweek',n,anchor}
+//            | {unit:'month',anchor} | {unit:'custommonth',n,anchor}
+function lastDayOfMonth(y,m){return new Date(y,m+1,0).getDate()}
+// 月份對齊：某個月裡「錨點日期對應的那天」，超過該月天數就取月底最後一天（例如錨點 31 號，2月就對到 28/29 號）
+function alignedDayInMonth(anchor,y,m){return Math.min(anchor.getDate(),lastDayOfMonth(y,m))}
 function isRoutineDueToday(t,todayDate){
   if(!t.repeat) return false;
   const day0=new Date(todayDate);day0.setHours(0,0,0,0); // 只比日期，忽略當下時分秒，避免下午載入頁面算錯一天
@@ -878,6 +884,18 @@ function isRoutineDueToday(t,todayDate){
     const weeks=days/7;
     return weeks>=0&&Number.isInteger(weeks)&&weeks%t.repeat.n===0;
   }
+  if(t.repeat.unit==='month'){
+    if(!t.repeat.anchor) return true;
+    const anchor=parseDKey(t.repeat.anchor);
+    return day0.getDate()===alignedDayInMonth(anchor,day0.getFullYear(),day0.getMonth());
+  }
+  if(t.repeat.unit==='custommonth'){
+    if(!t.repeat.anchor) return true;
+    const anchor=parseDKey(t.repeat.anchor);
+    if(day0.getDate()!==alignedDayInMonth(anchor,day0.getFullYear(),day0.getMonth())) return false;
+    const diff=(day0.getFullYear()-anchor.getFullYear())*12+(day0.getMonth()-anchor.getMonth());
+    return diff>=0&&diff%t.repeat.n===0;
+  }
   return false;
 }
 function getRoutineFreqLabel(repeat){
@@ -885,7 +903,21 @@ function getRoutineFreqLabel(repeat){
   if(repeat.unit==='week') return '每週'+['日','一','二','三','四','五','六'][repeat.dow];
   if(repeat.unit==='custom') return `每${repeat.n}天`;
   if(repeat.unit==='customweek') return `每${repeat.n}週`;
+  if(repeat.unit==='month') return `每月${repeat.anchor?parseDKey(repeat.anchor).getDate():''}日`;
+  if(repeat.unit==='custommonth') return `每${repeat.n}個月`;
   return '';
+}
+// 從某個日期算 n 個月後，日期超過那個月的天數就取月底最後一天
+function addMonthsClamped(anchor,months){
+  const totalM=anchor.getFullYear()*12+anchor.getMonth()+months;
+  const ty=Math.floor(totalM/12),tm=((totalM%12)+12)%12;
+  return new Date(ty,tm,alignedDayInMonth(anchor,ty,tm));
+}
+// 以 anchor 為準，算某天落在第幾個「已對齊」的月週期（提前到日期還沒到當月對齊日就算前一週期）
+function monthDiffAligned(anchor,d){
+  let diff=(d.getFullYear()-anchor.getFullYear())*12+(d.getMonth()-anchor.getMonth());
+  if(d.getDate()<alignedDayInMonth(anchor,d.getFullYear(),d.getMonth()))diff-=1;
+  return diff;
 }
 // 從某天開始，計算下一個符合重複規則的日期（用來重新排程週期性提醒）
 function nextRoutineDate(fromDate,repeat){
@@ -914,6 +946,18 @@ function nextRoutineDate(fromDate,repeat){
     const nextDays=Math.floor(days/period)*period+period;
     const r=new Date(anchor);r.setDate(r.getDate()+nextDays);
     return r;
+  }
+  if(repeat.unit==='month'){
+    if(!repeat.anchor){d.setMonth(d.getMonth()+1);return d}
+    const anchor=parseDKey(repeat.anchor);
+    return addMonthsClamped(anchor,monthDiffAligned(anchor,d)+1);
+  }
+  if(repeat.unit==='custommonth'){
+    if(!repeat.anchor){d.setMonth(d.getMonth()+repeat.n);return d}
+    const anchor=parseDKey(repeat.anchor);
+    const diff=monthDiffAligned(anchor,d);
+    const nextDiff=Math.floor(diff/repeat.n)*repeat.n+repeat.n;
+    return addMonthsClamped(anchor,nextDiff);
   }
   return null;
 }
@@ -1775,10 +1819,11 @@ document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=
 // 例行公事：頻率下拉選單切換顯示（星期幾 / 隔幾天）
 document.getElementById('routine-freq').addEventListener('change',e=>{
   const v=e.target.value;
+  const needN=v==='custom'||v==='customweek'||v==='custommonth';
   document.getElementById('routine-dow').style.display=v==='week'?'block':'none';
-  document.getElementById('routine-n').style.display=(v==='custom'||v==='customweek')?'block':'none';
-  document.getElementById('routine-n-label').style.display=(v==='custom'||v==='customweek')?'inline':'none';
-  document.getElementById('routine-n-label').textContent=v==='customweek'?'週一次':'天一次';
+  document.getElementById('routine-n').style.display=needN?'block':'none';
+  document.getElementById('routine-n-label').style.display=needN?'inline':'none';
+  document.getElementById('routine-n-label').textContent=v==='customweek'?'週一次':v==='custommonth'?'月一次':'天一次';
 });
 document.getElementById('add-routine-btn').addEventListener('click',()=>{
   const inp=document.getElementById('routine-input'),val=inp.value.trim();if(!val)return;
@@ -1787,6 +1832,8 @@ document.getElementById('add-routine-btn').addEventListener('click',()=>{
   if(freq==='daily')repeat='daily';
   else if(freq==='week')repeat={unit:'week',dow:parseInt(document.getElementById('routine-dow').value)};
   else if(freq==='customweek')repeat={unit:'customweek',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
+  else if(freq==='month')repeat={unit:'month',anchor:dKey(today)};
+  else if(freq==='custommonth')repeat={unit:'custommonth',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
   else repeat={unit:'custom',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
   const newTodo={id:nextId++,text:val,repeat};
   todos.push(newTodo);
