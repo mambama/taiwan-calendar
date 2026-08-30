@@ -234,6 +234,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .list-todo{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:11px;background:#F0EFFE;border:1px solid #C4BCF8;border-left:4px solid #534AB7;margin-bottom:5px}
 [data-theme="dark"] .list-todo{background:#1a1535;border-color:#362d6e}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-todo{background:#1a1535;border-color:#362d6e}}
+.list-routine{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:11px;background:#FFF3DC;border:1px solid #FBCE7C;border-left:4px solid #D97706;margin-bottom:5px}
+[data-theme="dark"] .list-routine{background:#2a1e08;border-color:#5c4211}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-routine{background:#2a1e08;border-color:#5c4211}}
+.list-routine .list-todo-text{color:#92400E}
+[data-theme="dark"] .list-routine .list-todo-text{color:#FBBF6A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .list-routine .list-todo-text{color:#FBBF6A}}
 .list-todo-cb{width:22px;height:22px;border:2px solid var(--bd);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;background:var(--bg)}
 .list-todo-cb.done{background:#1D9E75;border-color:#1D9E75;color:#fff}
 .list-todo-text{font-size:16px;font-weight:700;flex:1;color:#2D1A8C}
@@ -890,8 +896,36 @@ function nextRoutineDate(fromDate,repeat){
     while(d.getDay()!==repeat.dow)d.setDate(d.getDate()+1);
     return d;
   }
-  if(repeat.unit==='custom'){d.setDate(d.getDate()+repeat.n);return d}
-  if(repeat.unit==='customweek'){d.setDate(d.getDate()+repeat.n*7);return d}
+  // 每N天/每N週：不能直接加n天，要以 anchor 為基準算「下一個對齊週期的日子」，
+  // 不然從一個沒對齊週期的日期（例如今天剛好不是該做的那天）往後推會算錯
+  if(repeat.unit==='custom'){
+    if(!repeat.anchor){d.setDate(d.getDate()+repeat.n);return d}
+    const anchor=parseDKey(repeat.anchor);
+    const days=Math.round((d-anchor)/86400000);
+    const nextDays=Math.floor(days/repeat.n)*repeat.n+repeat.n;
+    const r=new Date(anchor);r.setDate(r.getDate()+nextDays);
+    return r;
+  }
+  if(repeat.unit==='customweek'){
+    if(!repeat.anchor){d.setDate(d.getDate()+repeat.n*7);return d}
+    const anchor=parseDKey(repeat.anchor);
+    const period=repeat.n*7;
+    const days=Math.round((d-anchor)/86400000);
+    const nextDays=Math.floor(days/period)*period+period;
+    const r=new Date(anchor);r.setDate(r.getDate()+nextDays);
+    return r;
+  }
+  return null;
+}
+// 找出從某天開始（含當天）第一個符合週期的日期
+function nextDueDate(repeat,fromDate){
+  if(isRoutineDueToday({repeat},fromDate)) return new Date(fromDate);
+  let cursor=new Date(fromDate);
+  for(let i=0;i<400;i++){
+    cursor=nextRoutineDate(cursor,repeat);
+    if(!cursor) return null;
+    if(isRoutineDueToday({repeat},cursor)) return cursor;
+  }
   return null;
 }
 // 找出「今天或之後」第一個符合週期、且指定時間還沒過的時間點（新增例行公事時，直接排第一次提醒用）
@@ -1439,13 +1473,15 @@ function renderRoutines(){
     const tReminders=t.reminders||[];
     const remBadge=tReminders.length?(tReminders.length===1?`<span class="remind-badge now">⏰ ${tReminders[0].label}</span>`:`<span class="remind-badge now">⏰ ${tReminders.length} 個提醒</span>`):'';
     const freqBadge=`<span class="repeat-badge">🔄 ${getRoutineFreqLabel(t.repeat)}</span>`;
+    const nextD=dueToday?null:nextDueDate(t.repeat,today);
+    const nextBadge=nextD?`<span class="repeat-badge">下次 ${nextD.getMonth()+1}/${nextD.getDate()}</span>`:'';
     const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">⏰</button>
         <button class="ic-btn del${mode==='confirm-del'?' active-mode':''}">×</button>
       </div>`:'<div style="font-size:12px;color:var(--tx3);flex-shrink:0">›</div>';
     main.innerHTML=`<div class="todo-cb${doneToday?' done':''}" data-id="${t.id}">${doneToday?'✓':''}</div>
-      <div class="ev-title-wrap"><span class="todo-text${doneToday?' done':''}">${t.text}</span>${freqBadge}${remBadge}</div>
+      <div class="ev-title-wrap"><span class="todo-text${doneToday?' done':''}">${t.text}</span>${freqBadge}${nextBadge}${remBadge}</div>
       ${actionsHtmlT}`;
     item.appendChild(main);
     if(mode==='edit'){
@@ -1573,14 +1609,17 @@ function renderMonthList(){
     document.getElementById('list-count').textContent=`共 ${routines.length} 筆`;
     if(!routines.length){container.innerHTML='<div class="list-empty">還沒有例行公事</div>';return}
     const renderRow=t=>{
-      const row=document.createElement('div');row.className='list-todo';row.style.cssText='border-left:3px solid #D97706';
+      const row=document.createElement('div');row.className='list-routine';
       const doneToday=isRoutineDoneToday(t);
+      const dueT=isRoutineDueToday(t,today);
+      const nextD=dueT?null:nextDueDate(t.repeat,today);
+      const nextTxt=nextD?`<span style="font-size:10px;color:#92400E;background:#FFF3DC;padding:1px 5px;border-radius:8px;font-weight:600">下次 ${nextD.getMonth()+1}/${nextD.getDate()}</span>`:'';
       const tRems=t.reminders||[];
       const tRemTxt=tRems.length?(tRems.length===1?`<span class="list-todo-remind">⏰ ${tRems[0].label}</span>`:`<span class="list-todo-remind">⏰ ${tRems.length} 個提醒</span>`):'';
       row.innerHTML=`<div class="list-todo-cb${doneToday?' done':''}" data-id="${t.id}">${doneToday?'✓':''}</div>
         <span class="list-todo-text${doneToday?' done':''}">${t.text}</span>
         <span style="font-size:10px;color:#92400E;background:#FFF3DC;padding:1px 5px;border-radius:8px;font-weight:600">🔄 ${getRoutineFreqLabel(t.repeat)}</span>
-        ${tRemTxt}`;
+        ${nextTxt}${tRemTxt}`;
       row.querySelector('.list-todo-cb').addEventListener('click',()=>{
         const idx=todos.findIndex(x=>x.id===t.id);
         if(idx>=0)todos[idx].doneDate=isRoutineDoneToday(todos[idx])?undefined:dKey(today);
