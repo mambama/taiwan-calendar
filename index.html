@@ -415,7 +415,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
             <option value="week">每週</option>
             <option value="custom">每隔 N 天</option>
             <option value="customweek">每隔 N 週</option>
-            <option value="month">每月（今天這天）</option>
+            <option value="month">每月（依開始日）</option>
             <option value="custommonth">每隔 N 月</option>
           </select>
           <select id="routine-dow" style="display:none;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer">
@@ -425,6 +425,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
           </select>
           <input type="number" id="routine-n" min="2" value="2" style="display:none;width:56px;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
           <span id="routine-n-label" style="display:none;font-size:12px;color:var(--tx2)">天一次</span>
+          <span id="routine-start-label" style="display:none;font-size:12px;color:var(--tx2)">開始日</span>
+          <input type="date" id="routine-start" style="display:none;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
           <span style="font-size:12px;color:var(--tx2)">提醒時間</span>
           <input type="time" id="routine-time" style="font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
         </div>
@@ -1820,21 +1822,27 @@ document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=
 document.getElementById('routine-freq').addEventListener('change',e=>{
   const v=e.target.value;
   const needN=v==='custom'||v==='customweek'||v==='custommonth';
+  const needStart=v==='custom'||v==='customweek'||v==='month'||v==='custommonth';
   document.getElementById('routine-dow').style.display=v==='week'?'block':'none';
   document.getElementById('routine-n').style.display=needN?'block':'none';
   document.getElementById('routine-n-label').style.display=needN?'inline':'none';
   document.getElementById('routine-n-label').textContent=v==='customweek'?'週一次':v==='custommonth'?'月一次':'天一次';
+  document.getElementById('routine-start').style.display=needStart?'block':'none';
+  document.getElementById('routine-start-label').style.display=needStart?'inline':'none';
 });
+document.getElementById('routine-start').value=dKey(today);
 document.getElementById('add-routine-btn').addEventListener('click',()=>{
   const inp=document.getElementById('routine-input'),val=inp.value.trim();if(!val)return;
   const freq=document.getElementById('routine-freq').value;
+  const startVal=document.getElementById('routine-start').value;
+  const anchor=startVal||dKey(today);
   let repeat;
   if(freq==='daily')repeat='daily';
   else if(freq==='week')repeat={unit:'week',dow:parseInt(document.getElementById('routine-dow').value)};
-  else if(freq==='customweek')repeat={unit:'customweek',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
-  else if(freq==='month')repeat={unit:'month',anchor:dKey(today)};
-  else if(freq==='custommonth')repeat={unit:'custommonth',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
-  else repeat={unit:'custom',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
+  else if(freq==='customweek')repeat={unit:'customweek',n:parseInt(document.getElementById('routine-n').value)||2,anchor};
+  else if(freq==='month')repeat={unit:'month',anchor};
+  else if(freq==='custommonth')repeat={unit:'custommonth',n:parseInt(document.getElementById('routine-n').value)||2,anchor};
+  else repeat={unit:'custom',n:parseInt(document.getElementById('routine-n').value)||2,anchor};
   const newTodo={id:nextId++,text:val,repeat};
   todos.push(newTodo);
   // 如果有填提醒時間，直接排到下一個符合週期的日子
