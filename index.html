@@ -964,6 +964,8 @@ function syncEvtReminder(ev,dk,date,reminder){
   const nkey=`evt-${dk}-${ev.title}-${reminder.id}`;
   const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
   scheduleNotif(nkey,'行事曆提醒',body,ms);
+  // schedId 帶著 sendAt，時間一變就會產生新 ID，一定要先把舊的排程刪掉，不然舊時間點還是會跳出來
+  cancelWebPushByTag(nkey);
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${sendAt}`;
   if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
