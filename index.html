@@ -150,9 +150,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .event-list{display:flex;flex-direction:column;gap:6px}
 .event-item{border-radius:11px;background:#DBEAFE;overflow:hidden;border:1px solid #93C5FD;border-left:4px solid #2563EB}
 .todo-item{border-radius:11px;background:#F0EFFE;overflow:hidden;border:1px solid #C4BCF8;border-left:4px solid #534AB7}
+.routine-item{border-radius:11px;background:#FFF3DC;overflow:hidden;border:1px solid #FBCE7C;border-left:4px solid #D97706}
 [data-theme="dark"] .event-item{background:#0f1e3a;border-color:#1e3a6e}
 [data-theme="dark"] .todo-item{background:#1a1535;border-color:#362d6e}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0f1e3a;border-color:#1e3a6e}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}}
+[data-theme="dark"] .routine-item{background:#2a1e08;border-color:#5c4211}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#0f1e3a;border-color:#1e3a6e}:root:not([data-theme="light"]) .todo-item{background:#1a1535;border-color:#362d6e}:root:not([data-theme="light"]) .routine-item{background:#2a1e08;border-color:#5c4211}}
 .event-main,.todo-main{display:flex;align-items:center;gap:8px;padding:13px 12px}
 .ev-dot{width:9px;height:9px;border-radius:50%;background:#2563EB;flex-shrink:0}
 .ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -194,6 +196,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .todo-text{flex:1;font-size:17px;font-weight:700;min-width:0;color:#2D1A8C}
 [data-theme="dark"] .todo-text{color:#A89FFF}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .todo-text{color:#A89FFF}}
+.routine-item .todo-text{color:#92400E}
+[data-theme="dark"] .routine-item .todo-text{color:#FBBF6A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .routine-item .todo-text{color:#FBBF6A}}
 .todo-text.done{text-decoration:line-through;color:var(--tx3)}
 .empty-msg{font-size:13px;font-weight:500;color:var(--tx3);padding:16px 0;text-align:center}
 .add-bar{display:flex;gap:6px;margin-top:10px}
@@ -403,6 +408,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
             <option value="daily">每天</option>
             <option value="week">每週</option>
             <option value="custom">每隔 N 天</option>
+            <option value="customweek">每隔 N 週</option>
           </select>
           <select id="routine-dow" style="display:none;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none;cursor:pointer">
             <option value="1">星期一</option><option value="2">星期二</option><option value="3">星期三</option>
@@ -411,6 +417,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
           </select>
           <input type="number" id="routine-n" min="2" value="2" style="display:none;width:56px;font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
           <span id="routine-n-label" style="display:none;font-size:12px;color:var(--tx2)">天一次</span>
+          <span style="font-size:12px;color:var(--tx2)">提醒時間</span>
+          <input type="time" id="routine-time" style="font-size:13px;padding:6px 8px;border:1.5px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--tx);outline:none"/>
         </div>
       </div>
     </div>
@@ -420,6 +428,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
     <div class="list-toggle">
       <button class="lt-btn active" id="lt-evt">📅 事件</button>
       <button class="lt-btn" id="lt-todo">✅ 待辦</button>
+      <button class="lt-btn" id="lt-routine">🔄 例行公事</button>
     </div>
     <div class="list-header">
       <span class="list-title" id="list-title"></span>
@@ -843,16 +852,25 @@ function matchesRepeat(date,orig,repeat){
 }
 
 // ── 例行公事（重複的待辦）輔助函式 ──────────────────────
-// repeat 格式：'daily' | {unit:'week',dow:0-6} | {unit:'custom',n,anchor:'YYYY-MM-DD'}
-function isRoutineDueToday(t,today){
+// repeat 格式：'daily' | {unit:'week',dow:0-6} | {unit:'custom',n,anchor} | {unit:'customweek',n,anchor}
+function isRoutineDueToday(t,todayDate){
   if(!t.repeat) return false;
+  const day0=new Date(todayDate);day0.setHours(0,0,0,0); // 只比日期，忽略當下時分秒，避免下午載入頁面算錯一天
   if(t.repeat==='daily') return true;
-  if(t.repeat.unit==='week') return today.getDay()===t.repeat.dow;
+  if(t.repeat.unit==='week') return day0.getDay()===t.repeat.dow;
   if(t.repeat.unit==='custom'){
     if(!t.repeat.anchor) return true;
     const anchor=parseDKey(t.repeat.anchor);
-    const days=Math.round((today-anchor)/86400000);
+    const days=Math.round((day0-anchor)/86400000);
     return days>=0&&days%t.repeat.n===0;
+  }
+  if(t.repeat.unit==='customweek'){
+    if(!t.repeat.anchor) return true;
+    const anchor=parseDKey(t.repeat.anchor);
+    if(day0.getDay()!==anchor.getDay()) return false;
+    const days=Math.round((day0-anchor)/86400000);
+    const weeks=days/7;
+    return weeks>=0&&Number.isInteger(weeks)&&weeks%t.repeat.n===0;
   }
   return false;
 }
@@ -860,6 +878,7 @@ function getRoutineFreqLabel(repeat){
   if(repeat==='daily') return '每天';
   if(repeat.unit==='week') return '每週'+['日','一','二','三','四','五','六'][repeat.dow];
   if(repeat.unit==='custom') return `每${repeat.n}天`;
+  if(repeat.unit==='customweek') return `每${repeat.n}週`;
   return '';
 }
 // 從某天開始，計算下一個符合重複規則的日期（用來重新排程週期性提醒）
@@ -872,6 +891,22 @@ function nextRoutineDate(fromDate,repeat){
     return d;
   }
   if(repeat.unit==='custom'){d.setDate(d.getDate()+repeat.n);return d}
+  if(repeat.unit==='customweek'){d.setDate(d.getDate()+repeat.n*7);return d}
+  return null;
+}
+// 找出「今天或之後」第一個符合週期、且指定時間還沒過的時間點（新增例行公事時，直接排第一次提醒用）
+function nextRoutineOccurrence(repeat,hh,mm){
+  let d=new Date(today);d.setHours(hh,mm,0,0);
+  if(isRoutineDueToday({repeat},today)&&d.getTime()>Date.now())return d;
+  let cursor=new Date(today);
+  for(let i=0;i<400;i++){
+    cursor=nextRoutineDate(cursor,repeat);
+    if(!cursor)return null;
+    if(isRoutineDueToday({repeat},cursor)){
+      cursor.setHours(hh,mm,0,0);
+      return cursor;
+    }
+  }
   return null;
 }
 // 是否今天已經完成（例行公事用 doneDate 記錄「哪一天完成的」，換日就自動重置）
@@ -1313,7 +1348,7 @@ function renderTodos(){
     const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">⏰</button>
-        <button class="ic-btn del">×</button>
+        <button class="ic-btn del${mode==='confirm-del'?' active-mode':''}">×</button>
       </div>`:'<div style="font-size:12px;color:var(--tx3);flex-shrink:0">›</div>';
     main.innerHTML=`<div class="todo-cb${t.done?' done':''}" data-id="${t.id}">${t.done?'✓':''}</div>
       <div class="ev-title-wrap"><span class="todo-text${t.done?' done':''}">${t.text}</span>${badge}</div>
@@ -1362,6 +1397,16 @@ function renderTodos(){
       dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
       item.appendChild(dtRow);
     }
+    if(mode==='confirm-del'){
+      const bar=document.createElement('div');bar.className='sub-bar';bar.style.cssText='padding:0 12px 10px;gap:8px;align-items:center';
+      bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此待辦？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
+      item.appendChild(bar);
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo={id:t.id,mode:null};renderTodos()});
+      bar.querySelector('.save-btn2').addEventListener('click',()=>{
+        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
+        todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
+      });
+    }
     // 點擊列本體切換展開/收合
     main.addEventListener('click',e=>{
       if(e.target.closest('.todo-cb')||e.target.closest('.ev-actions'))return;
@@ -1372,10 +1417,7 @@ function renderTodos(){
     if(isExp){
       main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(mode==='edit')?{id:t.id,mode:null}:{id:t.id,mode:'edit'};renderTodos()});
       main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(mode==='remind')?{id:t.id,mode:null}:{id:t.id,mode:'remind'};renderTodos()});
-      main.querySelector('.ic-btn.del').addEventListener('click',()=>{
-        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
-        todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
-      });
+      main.querySelector('.ic-btn.del').addEventListener('click',()=>{expandedTodo=(mode==='confirm-del')?{id:t.id,mode:null}:{id:t.id,mode:'confirm-del'};renderTodos()});
     }
     list.appendChild(item);
   });
@@ -1391,7 +1433,7 @@ function renderRoutines(){
   sorted.forEach(t=>{
     const isExp=expandedTodo&&expandedTodo.id===t.id,mode=isExp?expandedTodo.mode:null;
     const dueToday=isRoutineDueToday(t,today),doneToday=isRoutineDoneToday(t);
-    const item=document.createElement('div');item.className='todo-item';
+    const item=document.createElement('div');item.className='routine-item';
     if(!dueToday)item.style.opacity='.55';
     const main=document.createElement('div');main.className='todo-main';main.style.cursor='pointer';
     const tReminders=t.reminders||[];
@@ -1400,7 +1442,7 @@ function renderRoutines(){
     const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
         <button class="ic-btn bell${mode==='remind'?' active-mode':''}">⏰</button>
-        <button class="ic-btn del">×</button>
+        <button class="ic-btn del${mode==='confirm-del'?' active-mode':''}">×</button>
       </div>`:'<div style="font-size:12px;color:var(--tx3);flex-shrink:0">›</div>';
     main.innerHTML=`<div class="todo-cb${doneToday?' done':''}" data-id="${t.id}">${doneToday?'✓':''}</div>
       <div class="ev-title-wrap"><span class="todo-text${doneToday?' done':''}">${t.text}</span>${freqBadge}${remBadge}</div>
@@ -1448,6 +1490,16 @@ function renderRoutines(){
       dtRow.appendChild(dtInp);dtRow.appendChild(dtBtn);
       item.appendChild(dtRow);
     }
+    if(mode==='confirm-del'){
+      const bar=document.createElement('div');bar.className='sub-bar';bar.style.cssText='padding:0 12px 10px;gap:8px;align-items:center';
+      bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此例行公事？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
+      item.appendChild(bar);
+      bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo={id:t.id,mode:null};renderRoutines()});
+      bar.querySelector('.save-btn2').addEventListener('click',()=>{
+        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
+        todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderRoutines();renderMonthList();
+      });
+    }
     main.addEventListener('click',e=>{
       if(e.target.closest('.todo-cb')||e.target.closest('.ev-actions'))return;
       expandedTodo=(isExp&&mode===null)?null:{id:t.id,mode:null};
@@ -1462,10 +1514,7 @@ function renderRoutines(){
     if(isExp){
       main.querySelector('.ic-btn.edit').addEventListener('click',()=>{expandedTodo=(mode==='edit')?{id:t.id,mode:null}:{id:t.id,mode:'edit'};renderRoutines()});
       main.querySelector('.ic-btn.bell').addEventListener('click',()=>{expandedTodo=(mode==='remind')?{id:t.id,mode:null}:{id:t.id,mode:'remind'};renderRoutines()});
-      main.querySelector('.ic-btn.del').addEventListener('click',()=>{
-        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
-        todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderRoutines();
-      });
+      main.querySelector('.ic-btn.del').addEventListener('click',()=>{expandedTodo=(mode==='confirm-del')?{id:t.id,mode:null}:{id:t.id,mode:'confirm-del'};renderRoutines()});
     }
     list.appendChild(item);
   });
@@ -1499,7 +1548,7 @@ function renderMonthList(){
       });
       container.appendChild(group);
     });
-  }else{
+  }else if(listMode==='todos'){
     document.getElementById('list-title').textContent='所有待辦';
     const plainTodos=todos.filter(t=>!t.repeat);
     const pending=plainTodos.filter(t=>!t.done),done=plainTodos.filter(t=>t.done);
@@ -1517,11 +1566,36 @@ function renderMonthList(){
     };
     if(pending.length){const hd=document.createElement('div');hd.className='list-date-label';hd.innerHTML='<span class="list-date-text">未完成</span>';container.appendChild(hd);pending.forEach(renderRow)}
     if(done.length){const hd=document.createElement('div');hd.className='list-date-label';hd.style.marginTop='10px';hd.innerHTML='<span class="list-date-text" style="color:var(--tx3)">已完成</span>';container.appendChild(hd);done.forEach(renderRow)}
+  }else{
+    document.getElementById('list-title').textContent='例行公事';
+    const routines=todos.filter(t=>t.repeat);
+    const dueToday=routines.filter(t=>isRoutineDueToday(t,today)),others=routines.filter(t=>!isRoutineDueToday(t,today));
+    document.getElementById('list-count').textContent=`共 ${routines.length} 筆`;
+    if(!routines.length){container.innerHTML='<div class="list-empty">還沒有例行公事</div>';return}
+    const renderRow=t=>{
+      const row=document.createElement('div');row.className='list-todo';row.style.cssText='border-left:3px solid #D97706';
+      const doneToday=isRoutineDoneToday(t);
+      const tRems=t.reminders||[];
+      const tRemTxt=tRems.length?(tRems.length===1?`<span class="list-todo-remind">⏰ ${tRems[0].label}</span>`:`<span class="list-todo-remind">⏰ ${tRems.length} 個提醒</span>`):'';
+      row.innerHTML=`<div class="list-todo-cb${doneToday?' done':''}" data-id="${t.id}">${doneToday?'✓':''}</div>
+        <span class="list-todo-text${doneToday?' done':''}">${t.text}</span>
+        <span style="font-size:10px;color:#92400E;background:#FFF3DC;padding:1px 5px;border-radius:8px;font-weight:600">🔄 ${getRoutineFreqLabel(t.repeat)}</span>
+        ${tRemTxt}`;
+      row.querySelector('.list-todo-cb').addEventListener('click',()=>{
+        const idx=todos.findIndex(x=>x.id===t.id);
+        if(idx>=0)todos[idx].doneDate=isRoutineDoneToday(todos[idx])?undefined:dKey(today);
+        saveTodos();renderMonthList();
+      });
+      container.appendChild(row);
+    };
+    if(dueToday.length){const hd=document.createElement('div');hd.className='list-date-label';hd.innerHTML='<span class="list-date-text">今天該做</span>';container.appendChild(hd);dueToday.forEach(renderRow)}
+    if(others.length){const hd=document.createElement('div');hd.className='list-date-label';hd.style.marginTop='10px';hd.innerHTML='<span class="list-date-text" style="color:var(--tx3)">其他例行公事</span>';container.appendChild(hd);others.forEach(renderRow)}
   }
 }
-function setListMode(m){listMode=m;document.getElementById('lt-evt').classList.toggle('active',m==='events');document.getElementById('lt-todo').classList.toggle('active',m==='todos');renderMonthList()}
+function setListMode(m){listMode=m;document.getElementById('lt-evt').classList.toggle('active',m==='events');document.getElementById('lt-todo').classList.toggle('active',m==='todos');document.getElementById('lt-routine').classList.toggle('active',m==='routines');renderMonthList()}
 document.getElementById('lt-evt').addEventListener('click',()=>setListMode('events'));
 document.getElementById('lt-todo').addEventListener('click',()=>setListMode('todos'));
+document.getElementById('lt-routine').addEventListener('click',()=>setListMode('routines'));
 function toggleList(force){showingList=force!==undefined?force:!showingList;document.getElementById('cal-section').style.display=showingList?'none':'block';document.getElementById('list-section').style.display=showingList?'block':'none';document.getElementById('list-btn').classList.toggle('list-active',showingList);if(showingList)renderMonthList()}
 function switchTab(name){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));const tab=document.querySelector(`[data-tab="${name}"]`);if(tab)tab.classList.add('active');const panel=document.getElementById(`panel-${name}`);if(panel)panel.classList.add('active');if(name==='routines')renderRoutines()}
 
@@ -1658,8 +1732,9 @@ document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=
 document.getElementById('routine-freq').addEventListener('change',e=>{
   const v=e.target.value;
   document.getElementById('routine-dow').style.display=v==='week'?'block':'none';
-  document.getElementById('routine-n').style.display=v==='custom'?'block':'none';
-  document.getElementById('routine-n-label').style.display=v==='custom'?'inline':'none';
+  document.getElementById('routine-n').style.display=(v==='custom'||v==='customweek')?'block':'none';
+  document.getElementById('routine-n-label').style.display=(v==='custom'||v==='customweek')?'inline':'none';
+  document.getElementById('routine-n-label').textContent=v==='customweek'?'週一次':'天一次';
 });
 document.getElementById('add-routine-btn').addEventListener('click',()=>{
   const inp=document.getElementById('routine-input'),val=inp.value.trim();if(!val)return;
@@ -1667,9 +1742,21 @@ document.getElementById('add-routine-btn').addEventListener('click',()=>{
   let repeat;
   if(freq==='daily')repeat='daily';
   else if(freq==='week')repeat={unit:'week',dow:parseInt(document.getElementById('routine-dow').value)};
+  else if(freq==='customweek')repeat={unit:'customweek',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
   else repeat={unit:'custom',n:parseInt(document.getElementById('routine-n').value)||2,anchor:dKey(today)};
-  todos.push({id:nextId++,text:val,repeat});
-  inp.value='';saveTodos();renderRoutines();
+  const newTodo={id:nextId++,text:val,repeat};
+  todos.push(newTodo);
+  // 如果有填提醒時間，直接排到下一個符合週期的日子
+  const timeVal=document.getElementById('routine-time').value;
+  if(timeVal&&notifPermission==='granted'){
+    const[hh,mm]=timeVal.split(':').map(Number);
+    const occ=nextRoutineOccurrence(repeat,hh,mm);
+    if(occ){
+      const minsFromNow=(occ-Date.now())/60000;
+      addTodoReminder(newTodo,minsFromNow,timeVal);
+    }
+  }
+  inp.value='';document.getElementById('routine-time').value='';saveTodos();renderRoutines();
 });
 document.getElementById('routine-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add-routine-btn').click()});
 
