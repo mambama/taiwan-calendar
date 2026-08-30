@@ -917,6 +917,11 @@ function nextRoutineDate(fromDate,repeat){
   }
   return null;
 }
+// 不管今天算不算到期，一律找「今天之後」下一次符合週期的日期（給畫面顯示「下次」用）
+function nextOccurrenceAfterToday(repeat){
+  const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+  return nextDueDate(repeat,tomorrow);
+}
 // 找出從某天開始（含當天）第一個符合週期的日期
 function nextDueDate(repeat,fromDate){
   if(isRoutineDueToday({repeat},fromDate)) return new Date(fromDate);
@@ -1473,7 +1478,7 @@ function renderRoutines(){
     const tReminders=t.reminders||[];
     const remBadge=tReminders.length?(tReminders.length===1?`<span class="remind-badge now">⏰ ${tReminders[0].label}</span>`:`<span class="remind-badge now">⏰ ${tReminders.length} 個提醒</span>`):'';
     const freqBadge=`<span class="repeat-badge">🔄 ${getRoutineFreqLabel(t.repeat)}</span>`;
-    const nextD=dueToday?null:nextDueDate(t.repeat,today);
+    const nextD=nextOccurrenceAfterToday(t.repeat);
     const nextBadge=nextD?`<span class="repeat-badge">下次 ${nextD.getMonth()+1}/${nextD.getDate()}</span>`:'';
     const actionsHtmlT=isExp?`<div class="ev-actions">
         <button class="ic-btn edit${mode==='edit'?' active-mode':''}">✏️</button>
@@ -1612,7 +1617,7 @@ function renderMonthList(){
       const row=document.createElement('div');row.className='list-routine';
       const doneToday=isRoutineDoneToday(t);
       const dueT=isRoutineDueToday(t,today);
-      const nextD=dueT?null:nextDueDate(t.repeat,today);
+      const nextD=nextOccurrenceAfterToday(t.repeat);
       const nextTxt=nextD?`<span style="font-size:10px;color:#92400E;background:#FFF3DC;padding:1px 5px;border-radius:8px;font-weight:600">下次 ${nextD.getMonth()+1}/${nextD.getDate()}</span>`:'';
       const tRems=t.reminders||[];
       const tRemTxt=tRems.length?(tRems.length===1?`<span class="list-todo-remind">⏰ ${tRems[0].label}</span>`:`<span class="list-todo-remind">⏰ ${tRems.length} 個提醒</span>`):'';
