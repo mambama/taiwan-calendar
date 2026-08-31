@@ -1134,14 +1134,14 @@ function addEvtReminderAbsolute(ev,dk,sendAt,label){
   return true;
 }
 // 移除單一提醒
-function removeEvtReminder(ev,dk,rid){
+async function removeEvtReminder(ev,dk,rid){
   const nkey=`evt-${dk}-${ev.title}-${rid}`;
   if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
-  cancelWebPushByTag(nkey);
+  await cancelWebPushByTag(nkey);
   ev.reminders=(ev.reminders||[]).filter(r=>r.id!==rid);
 }
 // 事件時間變動時，重新計算單一提醒的觸發時間並重新排程（指定日期時間的提醒跟事件時間無關，跳過）
-function syncEvtReminder(ev,dk,date,reminder){
+async function syncEvtReminder(ev,dk,date,reminder){
   if(notifPermission!=='granted') return;
   if(reminder.remindAt) return;
   const sendAt=calcSendAt(reminder.label,date,ev.time);
@@ -1150,11 +1150,12 @@ function syncEvtReminder(ev,dk,date,reminder){
   const nkey=`evt-${dk}-${ev.title}-${reminder.id}`;
   const body=ev.time?`${ev.time} ${ev.title}`:ev.title;
   scheduleNotif(nkey,'行事曆提醒',body,ms);
-  // schedId 帶著 sendAt，時間一變就會產生新 ID，一定要先把舊的排程刪掉，不然舊時間點還是會跳出來
-  cancelWebPushByTag(nkey);
+  // schedId 帶著 sendAt，時間一變就會產生新 ID，一定要先「等」舊的排程真的刪除完成，
+  // 不然刪除跟新增兩個請求幾乎同時打到伺服器，會互相蓋掉，導致舊時間點沒清乾淨
+  await cancelWebPushByTag(nkey);
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-  if(ms>0) scheduleWebPush(schedId,body,sendAt,nkey);
+  if(ms>0) await scheduleWebPush(schedId,body,sendAt,nkey);
 }
 // 新增一筆待辦提醒（可疊加）
 function addTodoReminder(t, minsFromNow, label){
@@ -1186,7 +1187,7 @@ function addTodoReminder(t, minsFromNow, label){
   return true;
 }
 // 例行公事的提醒到期後，重新排到下一個週期（同一個提醒 ID，一直循環下去）
-function rearmRoutineReminder(t,r){
+async function rearmRoutineReminder(t,r){
   if(!t.repeat) return;
   const old=new Date(r.remindAt);
   const next=nextRoutineDate(new Date(),t.repeat);
@@ -1204,15 +1205,17 @@ function rearmRoutineReminder(t,r){
       renderTodos();renderRoutines();renderMonthList();
     }
   });
+  // 保險起見先取消同一個 tag 舊的排程，避免萬一舊的還沒被 Cron 清掉，跟新的重複
+  await cancelWebPushByTag(nkey);
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${r.remindAt}`;
-  if(ms>0) scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey);
+  if(ms>0) await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey);
 }
 // 移除單一待辦提醒
-function removeTodoReminder(t,rid){
+async function removeTodoReminder(t,rid){
   const nkey=`todo-${t.id}-${rid}`;
   if(scheduledNotifs[nkey]){clearTimeout(scheduledNotifs[nkey]);delete scheduledNotifs[nkey]}
-  cancelWebPushByTag(nkey);
+  await cancelWebPushByTag(nkey);
   t.reminders=(t.reminders||[]).filter(r=>r.id!==rid);
 }
 
@@ -1281,16 +1284,17 @@ function renderEventPanel(){
       if(ev.time)timeInp.value=ev.time;
       const timeSetBtn=document.createElement('button');timeSetBtn.textContent='套用';
       timeSetBtn.style.cssText='font-size:12px;font-weight:700;padding:6px 12px;border:none;border-radius:9px;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap';
-      timeSetBtn.addEventListener('click',()=>{
+      timeSetBtn.addEventListener('click',async()=>{
         const newTime=timeInp.value||undefined;
         if(origIdx>=0){
           origEvts[origIdx]={...origEvts[origIdx],time:newTime};
           // 事件時間變了，把現有的每筆提醒都依新時間重新排程；「當天 HH:MM」這種標籤文字也要跟著更新，不然畫面看起來像沒反應
           // （指定日期時間的提醒跟事件時間無關，label 不用跟著改）
-          (origEvts[origIdx].reminders||[]).forEach(r=>{
+          // 依序等待（不要同時發出多個請求，避免伺服器端競爭寫入互相蓋掉）
+          for(const r of (origEvts[origIdx].reminders||[])){
             if(!r.remindAt&&r.label.startsWith('當天')) r.label=`當天 ${newTime||'00:00'}`;
-            syncEvtReminder(origEvts[origIdx],dk,selectedDate,r);
-          });
+            await syncEvtReminder(origEvts[origIdx],dk,selectedDate,r);
+          }
           localEvents[dk]=origEvts;
         }
         saveEvents();renderEventPanel();renderCalendar();
@@ -1401,9 +1405,9 @@ function renderEventPanel(){
       bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此事件？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
       item.appendChild(bar);
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedEvt={dk,idx:origIdx,mode:null};renderEventPanel()});
-      bar.querySelector('.save-btn2').addEventListener('click',()=>{
+      bar.querySelector('.save-btn2').addEventListener('click',async()=>{
         if(origIdx>=0){
-          (origEvts[origIdx].reminders||[]).forEach(r=>removeEvtReminder(origEvts[origIdx],dk,r.id));
+          for(const r of (origEvts[origIdx].reminders||[])) await removeEvtReminder(origEvts[origIdx],dk,r.id);
           origEvts.splice(origIdx,1);
         }
         localEvents[dk]=origEvts;expandedEvt=null;saveEvents();renderEventPanel();renderMonthList();renderCalendar();
@@ -1487,8 +1491,8 @@ function renderTodos(){
       bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此待辦？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
       item.appendChild(bar);
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo={id:t.id,mode:null};renderTodos()});
-      bar.querySelector('.save-btn2').addEventListener('click',()=>{
-        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
+      bar.querySelector('.save-btn2').addEventListener('click',async()=>{
+        for(const r of (t.reminders||[])) await removeTodoReminder(t,r.id);
         todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderTodos();renderMonthList();
       });
     }
@@ -1582,8 +1586,8 @@ function renderRoutines(){
       bar.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--tx);flex:1">確定要刪除此例行公事？</span><button class="cancel-btn2">取消</button><button class="save-btn2" style="background:#E24B4A">刪除</button>`;
       item.appendChild(bar);
       bar.querySelector('.cancel-btn2').addEventListener('click',()=>{expandedTodo={id:t.id,mode:null};renderRoutines()});
-      bar.querySelector('.save-btn2').addEventListener('click',()=>{
-        (t.reminders||[]).forEach(r=>removeTodoReminder(t,r.id));
+      bar.querySelector('.save-btn2').addEventListener('click',async()=>{
+        for(const r of (t.reminders||[])) await removeTodoReminder(t,r.id);
         todos=todos.filter(x=>x.id!==t.id);expandedTodo=null;saveTodos();renderRoutines();renderMonthList();
       });
     }
@@ -1937,18 +1941,20 @@ updateNotifUI();
 loadStorage();
 
 // 開啟 App 時清除已過期的待辦提醒標籤
-(function cleanupPastReminders(){
+(async function cleanupPastReminders(){
   const now=Date.now();let changed=false;
-  todos.forEach(t=>{
+  for(const t of todos){
     if(t.repeat){
-      // 例行公事：過期的提醒補排到下一輪，不是直接砍掉
-      (t.reminders||[]).forEach(r=>{if(r.remindAt&&r.remindAt<now){rearmRoutineReminder(t,r);changed=true;}});
+      // 例行公事：過期的提醒補排到下一輪，不是直接砍掉（依序等待，避免多筆同時搶）
+      for(const r of (t.reminders||[])){
+        if(r.remindAt&&r.remindAt<now){await rearmRoutineReminder(t,r);changed=true;}
+      }
     }else{
       const before=(t.reminders||[]).length;
       t.reminders=(t.reminders||[]).filter(r=>!r.remindAt||r.remindAt>=now);
       if(t.reminders.length!==before)changed=true;
     }
-  });
+  }
   if(changed){try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}}
 })();
 
