@@ -1,5 +1,5 @@
 // 台灣行事曆 Service Worker v2 — 含 Web Push 支援
-const CACHE_NAME = 'tw-calendar-v4';
+const CACHE_NAME = 'tw-calendar-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -47,7 +47,7 @@ self.addEventListener('fetch', event => {
   const isAppShell = event.request.mode === 'navigate' || event.request.url.endsWith('/index.html');
   if (isAppShell) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then(res => {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
