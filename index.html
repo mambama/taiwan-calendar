@@ -1081,12 +1081,12 @@ function buildRemindPopup({reminders=[],presets,nowMode=false,onAdd,onRemove}){
   const pop=document.createElement('div');pop.className='reminder-popup';
   // 目前已設定的提醒（可疊加多筆，各自可移除）
   if(reminders.length){
-    const list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:5px;padding:0 0 8px';
+    const list=document.createElement('div');list.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px';
     reminders.forEach(r=>{
       const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:6px;background:var(--bg2);border-radius:9px;padding:6px 10px';
+      row.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border-radius:9px;padding:5px 8px';
       const lbl=document.createElement('span');lbl.textContent='🔔 '+r.label;
-      lbl.style.cssText='flex:1;font-size:13px;font-weight:600;color:var(--tx)';
+      lbl.style.cssText='font-size:13px;font-weight:600;color:var(--tx);white-space:nowrap';
       const rmBtn=document.createElement('button');rmBtn.textContent='✕';
       rmBtn.style.cssText='border:none;background:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1';
       rmBtn.addEventListener('click',()=>onRemove(r.id));
