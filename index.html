@@ -165,21 +165,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 [data-theme="dark"] .routine-item{background:#2DD4BF}
 [data-theme="dark"] .routine-item.not-due{background:#134E4A}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .event-item{background:#3B82F6}:root:not([data-theme="light"]) .todo-item{background:#22C55E}:root:not([data-theme="light"]) .routine-item{background:#2DD4BF}:root:not([data-theme="light"]) .routine-item.not-due{background:#134E4A}}
-/* 例行公事在深色模式的到期底色(青綠)偏亮，維持深色文字才夠對比；未到期(暗青)則用白字 */
-[data-theme="dark"] .routine-item:not(.not-due) .todo-text,[data-theme="dark"] .list-routine:not(.not-due) .list-todo-text{color:#053B35!important}
-[data-theme="dark"] .routine-item:not(.not-due) .ic-btn{color:#053B35!important;border-color:rgba(5,59,53,.45)!important}
-[data-theme="dark"] .routine-item:not(.not-due) .todo-cb:not(.done),[data-theme="dark"] .list-routine:not(.not-due) .list-todo-cb:not(.done){border-color:rgba(5,59,53,.6)!important;background:rgba(5,59,53,.15)!important}
-[data-theme="dark"] .routine-item:not(.not-due) .remind-badge,[data-theme="dark"] .routine-item:not(.not-due) .repeat-badge,[data-theme="dark"] .routine-item:not(.not-due) .time-badge,
-[data-theme="dark"] .list-routine:not(.not-due) .list-todo-remind,[data-theme="dark"] .list-routine:not(.not-due) .repeat-badge{
-  background:rgba(5,59,53,.2)!important;color:#053B35!important;border-color:rgba(5,59,53,.35)!important}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) .routine-item:not(.not-due) .todo-text,:root:not([data-theme="light"]) .list-routine:not(.not-due) .list-todo-text{color:#053B35!important}
-  :root:not([data-theme="light"]) .routine-item:not(.not-due) .ic-btn{color:#053B35!important;border-color:rgba(5,59,53,.45)!important}
-  :root:not([data-theme="light"]) .routine-item:not(.not-due) .todo-cb:not(.done),:root:not([data-theme="light"]) .list-routine:not(.not-due) .list-todo-cb:not(.done){border-color:rgba(5,59,53,.6)!important;background:rgba(5,59,53,.15)!important}
-  :root:not([data-theme="light"]) .routine-item:not(.not-due) .remind-badge,:root:not([data-theme="light"]) .routine-item:not(.not-due) .repeat-badge,:root:not([data-theme="light"]) .routine-item:not(.not-due) .time-badge,
-  :root:not([data-theme="light"]) .list-routine:not(.not-due) .list-todo-remind,:root:not([data-theme="light"]) .list-routine:not(.not-due) .repeat-badge{
-    background:rgba(5,59,53,.2)!important;color:#053B35!important;border-color:rgba(5,59,53,.35)!important}
-}
 .event-main,.todo-main{display:flex;align-items:center;gap:8px;padding:13px 12px}
 .ev-dot{width:9px;height:9px;border-radius:50%;background:#2563EB;flex-shrink:0}
 .ev-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
