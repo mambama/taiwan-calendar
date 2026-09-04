@@ -166,6 +166,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .event-item .reminder-popup>div:first-child,.todo-item .reminder-popup>div:first-child,.routine-item .reminder-popup>div:first-child{color:rgba(255,255,255,.75)!important}
 .event-item .rem-opt,.todo-item .rem-opt,.routine-item .rem-opt{color:#fff!important;border-color:rgba(255,255,255,.5)!important}
 .event-item .reminder-popup span{color:#fff!important}
+.event-item .set-remind-lbl,.todo-item .set-remind-lbl,.routine-item .set-remind-lbl{color:#1F2937!important}
+.event-item .set-remind-pill button,.todo-item .set-remind-pill button,.routine-item .set-remind-pill button{color:#1F2937!important}
 .event-item .card-subpanel-label,.todo-item .card-subpanel-label,.routine-item .card-subpanel-label{color:rgba(255,255,255,.85)!important}
 [data-theme="dark"] .event-item{background:#3B82F6}
 [data-theme="dark"] .todo-item{background:#22C55E}
@@ -1084,12 +1086,12 @@ function buildRemindPopup({reminders=[],presets,nowMode=false,onAdd,onRemove}){
   if(reminders.length){
     const list=document.createElement('div');list.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px';
     reminders.forEach(r=>{
-      const row=document.createElement('div');
-      row.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border-radius:9px;padding:5px 8px';
-      const lbl=document.createElement('span');lbl.textContent='🔔 '+r.label;
-      lbl.style.cssText='font-size:13px;font-weight:600;color:var(--tx);white-space:nowrap';
+      const row=document.createElement('div');row.className='set-remind-pill';
+      row.style.cssText='display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.88);border-radius:9px;padding:5px 8px';
+      const lbl=document.createElement('span');lbl.className='set-remind-lbl';lbl.textContent='🔔 '+r.label;
+      lbl.style.cssText='font-size:13px;font-weight:600;color:#1F2937;white-space:nowrap';
       const rmBtn=document.createElement('button');rmBtn.textContent='✕';
-      rmBtn.style.cssText='border:none;background:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1';
+      rmBtn.style.cssText='border:none;background:none;color:#1F2937;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1';
       rmBtn.addEventListener('click',()=>onRemove(r.id));
       row.appendChild(lbl);row.appendChild(rmBtn);
       list.appendChild(row);
