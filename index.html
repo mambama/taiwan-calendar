@@ -165,7 +165,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--tx);font-size:15px
 .event-item .cancel-btn2,.todo-item .cancel-btn2,.routine-item .cancel-btn2{color:rgba(255,255,255,.85)!important;border-color:rgba(255,255,255,.5)!important}
 .event-item .reminder-popup>div:first-child,.todo-item .reminder-popup>div:first-child,.routine-item .reminder-popup>div:first-child{color:rgba(255,255,255,.75)!important}
 .event-item .rem-opt,.todo-item .rem-opt,.routine-item .rem-opt{color:#fff!important;border-color:rgba(255,255,255,.5)!important}
-.event-item button.rem-opt.active,.todo-item button.rem-opt.active,.routine-item button.rem-opt.active{color:#111!important;border-color:#111!important}
+.event-item .rem-opt.repeat-opt,.todo-item .rem-opt.repeat-opt,.routine-item .rem-opt.repeat-opt{color:#111!important;border-color:rgba(0,0,0,.4)!important}
+.event-item button.rem-opt.repeat-opt.active,.todo-item button.rem-opt.repeat-opt.active,.routine-item button.rem-opt.repeat-opt.active{color:#111!important;border-color:#111!important}
 .event-item .reminder-popup span{color:#fff!important}
 .event-item .repeat-note,.todo-item .repeat-note,.routine-item .repeat-note{color:#111!important}
 .event-item span.set-remind-lbl,.todo-item span.set-remind-lbl,.routine-item span.set-remind-lbl{color:#1F2937!important}
@@ -1386,7 +1387,7 @@ function renderEventPanel(){
         else if(o.key==='monthly'&&ev.repeat==='monthly')isActive=true;
         else if(o.key==='yearly'&&ev.repeat==='yearly')isActive=true;
         else if(o.key==='custom'&&typeof ev.repeat==='object')isActive=true;
-        btn.className='rem-opt'+(isActive?' active':'');
+        btn.className='rem-opt repeat-opt'+(isActive?' active':'');
         btn.textContent=o.label;btn.style.fontSize='12px';
         btn.addEventListener('click',()=>{
           if(o.key==='custom'){
