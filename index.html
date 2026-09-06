@@ -1356,7 +1356,7 @@ function renderEventPanel(){
       const dtInp=document.createElement('input');
       dtInp.type='datetime-local';
       dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
-      dtInp.min=dtNow.toISOString().slice(0,16);
+      dtInp.min=new Date(dtNow-dtNow.getTimezoneOffset()*60000).toISOString().slice(0,16);
       // 最晚只能選到事件當天，超過的話應該直接去那天設定提醒
       const dtMax=new Date(selectedDate);dtMax.setHours(23,59,0,0);
       dtInp.max=new Date(dtMax-dtMax.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -1509,7 +1509,7 @@ function renderTodos(){
       const dtInp=document.createElement('input');
       dtInp.type='datetime-local';
       dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
-      dtInp.min=now2.toISOString().slice(0,16);
+      dtInp.min=new Date(now2-now2.getTimezoneOffset()*60000).toISOString().slice(0,16);
       const dtBtn=document.createElement('button');
       dtBtn.textContent='指定時間';dtBtn.style.cssText='font-size:13px;font-weight:700;padding:7px 12px;border:none;border-radius:10px;background:#F59E0B;color:#fff;cursor:pointer;white-space:nowrap';
       dtBtn.addEventListener('click',()=>{
@@ -1603,7 +1603,7 @@ function renderRoutines(){
       const dtInp=document.createElement('input');
       dtInp.type='datetime-local';
       dtInp.style.cssText='flex:1;font-size:13px;padding:7px 8px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);outline:none';
-      dtInp.min=now2.toISOString().slice(0,16);
+      dtInp.min=new Date(now2-now2.getTimezoneOffset()*60000).toISOString().slice(0,16);
       const dtBtn=document.createElement('button');
       dtBtn.textContent='指定時間';dtBtn.style.cssText='font-size:13px;font-weight:700;padding:7px 12px;border:none;border-radius:10px;background:#F59E0B;color:#fff;cursor:pointer;white-space:nowrap';
       dtBtn.addEventListener('click',()=>{
