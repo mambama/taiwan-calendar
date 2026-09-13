@@ -550,6 +550,7 @@ async function syncFromCloud(manual=false){
       renderCalendar(); renderEventPanel(); renderTodos(); renderMonthList();
       showToast();
       remindersRescheduled = false; // 重置旗標，讓手機可重新排程新資料的提醒
+      await cleanupPastReminders(); // 雲端資料可能帶著別台裝置沒推進的舊 remindAt，拉下來後要立刻補排，不然要等下次整個重新整理才會修正
       rescheduleAllReminders();
       if(manual) alert(`✅ 同步完成！\n上次更新：${new Date(data.updatedAt).toLocaleString('zh-TW')}`);
       else console.log('✅ 雲端同步完成');
@@ -850,6 +851,7 @@ async function rescheduleAllReminders(){
             todos[idx].reminders=(todos[idx].reminders||[]).filter(rr=>rr.id!==rid);
           }
           try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+          syncToCloud();
           renderTodos();renderRoutines();renderMonthList();
         }
       });
@@ -1210,6 +1212,7 @@ function addTodoReminder(t, minsFromNow, label){
         todos[idx].reminders=(todos[idx].reminders||[]).filter(r=>r.id!==rid);
       }
       try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+      syncToCloud();
       renderTodos();renderRoutines();renderMonthList();
     }
   });
@@ -1237,6 +1240,7 @@ async function rearmRoutineReminder(t,r){
       const rr=(todos[idx].reminders||[]).find(x=>x.id===r.id);
       if(rr) rearmRoutineReminder(todos[idx],rr);
       try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+      syncToCloud();
       renderTodos();renderRoutines();renderMonthList();
     }
   });
@@ -1978,8 +1982,9 @@ updateNotifUI();
 loadStorage();
 document.getElementById('notes-input').value=notes;
 
-// 開啟 App 時清除已過期的待辦提醒標籤
-(async function cleanupPastReminders(){
+// 清除已過期的待辦提醒標籤（開啟 App 時、以及每次從雲端拉取資料後都要跑一次，
+// 不然例行公事的 remindAt 只存在本機、沒同步回雲端，被別台裝置的舊資料蓋掉後就會卡住不再往前推）
+async function cleanupPastReminders(){
   const now=Date.now();let changed=false;
   for(const t of todos){
     if(t.repeat){
@@ -1993,8 +1998,13 @@ document.getElementById('notes-input').value=notes;
       if(t.reminders.length!==before)changed=true;
     }
   }
-  if(changed){try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}}
-})();
+  if(changed){
+    try{localStorage.setItem('cal_todos',JSON.stringify(todos))}catch(e){}
+    syncToCloud();
+    renderTodos();renderRoutines();renderMonthList();
+  }
+}
+cleanupPastReminders();
 
 renderCalendar();renderTodos();renderRoutines();renderEventPanel();
 loadHolidays(curYear,true);
