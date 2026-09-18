@@ -621,12 +621,12 @@ async function setupPush() {
   } catch(e) { console.warn('Web Push 設定失敗:', e.message); }
 }
 
-async function scheduleWebPush(scheduleId, body, sendAt, tag) {
+async function scheduleWebPush(scheduleId, body, sendAt, tag, repeat) {
   if (!WORKER_URL || !userId) return;
   try {
     const res = await fetch(`${WORKER_URL}/api/schedule`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt, tag: tag || scheduleId, syncCode: syncCode||undefined })
+      body: JSON.stringify({ userId, scheduleId, title: '曼巴行事曆提醒', body, sendAt, tag: tag || scheduleId, syncCode: syncCode||undefined, repeat: repeat||undefined })
     });
     const data = await res.json();
     console.log(`📅 排程推播 [${scheduleId}]`, data, '時間:', new Date(sendAt).toLocaleString('zh-TW'));
@@ -857,7 +857,7 @@ async function rescheduleAllReminders(){
       });
       const devPrefix=userId?userId.slice(0,8):'dev';
       const schedId=`${devPrefix}-${nkey}-${r.remindAt}`;
-      await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey);
+      await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey,t.repeat);
     }
   }
 }
@@ -1219,7 +1219,7 @@ function addTodoReminder(t, minsFromNow, label){
   // Web Push（schedId 統一帶裝置前綴，避免同步後重複排程）
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${sendAt}`;
-  scheduleWebPush(schedId,`待辦：${t.text}`,sendAt,nkey);
+  scheduleWebPush(schedId,`待辦：${t.text}`,sendAt,nkey,t.repeat);
   if(!t.reminders) t.reminders=[];
   t.reminders.push({id:rid,label,remindAt:sendAt});
   return true;
@@ -1228,9 +1228,16 @@ function addTodoReminder(t, minsFromNow, label){
 async function rearmRoutineReminder(t,r){
   if(!t.repeat) return;
   const old=new Date(r.remindAt);
-  const next=nextRoutineDate(new Date(),t.repeat);
+  // 從「上一次的提醒日」往後找第一個還沒到的週期日（不能從今天算起，不然補排時會漏掉今天還沒到的那一次）
+  let cursor=new Date(old),next=null;
+  for(let i=0;i<400;i++){
+    const nd=nextRoutineDate(cursor,t.repeat);
+    if(!nd) return;
+    nd.setHours(old.getHours(),old.getMinutes(),0,0);
+    cursor=nd;
+    if(nd.getTime()>Date.now()){next=nd;break}
+  }
   if(!next) return;
-  next.setHours(old.getHours(),old.getMinutes(),0,0);
   r.remindAt=next.getTime();
   const nkey=`todo-${t.id}-${r.id}`;
   const ms=r.remindAt-Date.now();
@@ -1248,7 +1255,7 @@ async function rearmRoutineReminder(t,r){
   await cancelWebPushByTag(nkey);
   const devPrefix=userId?userId.slice(0,8):'dev';
   const schedId=`${devPrefix}-${nkey}-${r.remindAt}`;
-  if(ms>0) await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey);
+  if(ms>0) await scheduleWebPush(schedId,`待辦：${t.text}`,r.remindAt,nkey,t.repeat);
 }
 // 移除單一待辦提醒
 async function removeTodoReminder(t,rid){
