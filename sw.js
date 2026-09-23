@@ -1,5 +1,5 @@
 // 台灣行事曆 Service Worker v2 — 含 Web Push 支援
-const CACHE_NAME = 'tw-calendar-v5';
+const CACHE_NAME = 'tw-calendar-v6';
 const ASSETS = [
   './',
   './index.html',
